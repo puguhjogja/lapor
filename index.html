@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LapPuguh - Aplikasi Laporan Pekerjaan Profesional</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- html2pdf for PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        @media print {
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            body { background: white; color: black; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-gradient-to-r from-brand-700 to-brand-600 text-white shadow-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white text-brand-700 p-2 rounded-xl shadow font-bold text-xl flex items-center justify-center w-10 h-10">
+                    <i class="fa-solid fa-hard-hat"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">LapPuguh</h1>
+                    <p class="text-xs text-brand-100">Sistem Laporan Pekerjaan Profesional</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2 mt-2 sm:mt-0">
+                <button onclick="switchTab('dashboard')" class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium bg-brand-800 text-white transition hover:bg-brand-500">
+                    <i class="fa-solid fa-chart-pie mr-1"></i> Dashboard
+                </button>
+                <button onclick="checkAdminAccess('admin')" class="tab-btn px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-brand-500 transition">
+                    <i class="fa-solid fa-lock mr-1"></i> Panel Admin
+                </button>
+                <button onclick="exportJSONData()" title="Backup Data JSON" class="bg-brand-800 hover:bg-brand-500 p-2 rounded-lg text-sm transition">
+                    <i class="fa-solid fa-download"></i> Backup
+                </button>
+                <label title="Restore Data JSON" class="bg-brand-800 hover:bg-brand-500 p-2 rounded-lg text-sm cursor-pointer transition">
+                    <i class="fa-solid fa-upload"></i>
+                    <input type="file" id="importFile" accept=".json" class="hidden" onchange="importJSONData(event)">
+                </label>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6">
+
+        <!-- ==================== TAB: DASHBOARD / LAPORAN UMUM ==================== -->
+        <div id="tab-dashboard" class="tab-content active space-y-6">
+            <!-- Filter & Quick Action -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-center justify-between">
+                <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Pilih Lokasi Kerja</label>
+                        <select id="filterProject" onchange="renderDashboard()" class="border border-gray-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 w-full sm:w-64">
+                            <option value="">Semua Lokasi / Proyek</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm px-4 py-2 rounded-xl shadow transition flex items-center">
+                        <i class="fa-solid fa-file-excel mr-2"></i> Export Excel
+                    </button>
+                    <button onclick="exportToPDF()" class="bg-rose-600 hover:bg-rose-700 text-white text-sm px-4 py-2 rounded-xl shadow transition flex items-center">
+                        <i class="fa-solid fa-file-pdf mr-2"></i> Export PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="p-3 bg-emerald-50 text-emerald-600 rounded-2xl text-xl">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase">Total Uang Masuk</p>
+                        <h3 id="sumIncome" class="text-lg font-bold text-gray-800">Rp 0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="p-3 bg-rose-50 text-rose-600 rounded-2xl text-xl">
+                        <i class="fa-solid fa-receipt"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase">Total Pengeluaran Nota</p>
+                        <h3 id="sumExpense" class="text-lg font-bold text-gray-800">Rp 0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="p-3 bg-amber-50 text-amber-600 rounded-2xl text-xl">
+                        <i class="fa-solid fa-users-gear"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase">Total Upah Pekerja</p>
+                        <h3 id="sumWages" class="text-lg font-bold text-gray-800">Rp 0</h3>
+                    </div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-center space-x-4">
+                    <div class="p-3 bg-indigo-50 text-indigo-600 rounded-2xl text-xl">
+                        <i class="fa-solid fa-scale-balanced"></i>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 uppercase">Saldo Akhir</p>
+                        <h3 id="sumBalance" class="text-lg font-bold text-gray-800">Rp 0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Details Sections (Printable Area) -->
+            <div id="printableArea" class="space-y-6">
+                <!-- Lokasi / Proyek Info -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fa-solid fa-map-location-dot text-brand-600 mr-2"></i> Informasi Lokasi Kerjaan
+                    </h3>
+                    <div id="dashboardProjectDetails" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <p class="text-gray-500 italic">Pilih lokasi kerja spesifik untuk melihat detail informasi proyek.</p>
+                    </div>
+                </div>
+
+                <!-- Keuangan (Uang Masuk & Pengeluaran Nota) -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Uang Masuk -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 class="text-md font-bold text-gray-800 mb-3 flex items-center justify-between">
+                            <span><i class="fa-solid fa-arrow-trend-up text-emerald-600 mr-2"></i> Riwayat Uang Masuk</span>
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                                    <tr>
+                                        <th class="p-2.5">Tanggal</th>
+                                        <th class="p-2.5">Tipe</th>
+                                        <th class="p-2.5 text-right">Jumlah</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableIncomeList" class="divide-y divide-gray-100">
+                                    <tr><td colspan="3" class="p-3 text-center text-gray-400">Belum ada data</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Pengeluaran Nota -->
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h3 class="text-md font-bold text-gray-800 mb-3 flex items-center justify-between">
+                            <span><i class="fa-solid fa-receipt text-rose-600 mr-2"></i> Pengeluaran Nota & Material</span>
+                        </h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                                    <tr>
+                                        <th class="p-2.5">Tgl & Nota</th>
+                                        <th class="p-2.5">Keterangan</th>
+                                        <th class="p-2.5 text-right">Total</th>
+                                        <th class="p-2.5 text-center">Foto</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableExpenseList" class="divide-y divide-gray-100">
+                                    <tr><td colspan="4" class="p-3 text-center text-gray-400">Belum ada data</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upah & Pekerja -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 class="text-md font-bold text-gray-800 mb-3 flex items-center">
+                        <i class="fa-solid fa-hard-hat text-amber-600 mr-2"></i> Rekapitulasi Upah Pekerja
+                    </h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                                <tr>
+                                    <th class="p-2.5">Tanggal</th>
+                                    <th class="p-2.5">Pekerja / Tipe</th>
+                                    <th class="p-2.5 text-center">Hadir</th>
+                                    <th class="p-2.5 text-right">Upah/Hri</th>
+                                    <th class="p-2.5 text-right">Total Upah</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tableWageList" class="divide-y divide-gray-100">
+                                <tr><td colspan="5" class="p-3 text-center text-gray-400">Belum ada data</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Foto Before / After Proyek -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h3 class="text-md font-bold text-gray-800 mb-3 flex items-center">
+                        <i class="fa-solid fa-camera-retro text-indigo-600 mr-2"></i> Dokumentasi Foto Before / After
+                    </h3>
+                    <div id="dashboardGallery" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <p class="text-gray-400 text-sm italic">Belum ada foto dokumentasi.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB: PANEL ADMIN (TERPROTEKSI PIN) ==================== -->
+        <div id="tab-admin" class="tab-content space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                        <i class="fa-solid fa-toolbox text-brand-600 mr-2"></i> Panel Kelola Data LapPuguh
+                    </h2>
+                    <p class="text-sm text-gray-500">Kelola master data lokasi, keuangan, pekerja, dan dokumentasi proyek.</p>
+                </div>
+                <div class="flex items-center space-x-3 mt-3 sm:mt-0">
+                    <button onclick="openChangePasswordModal()" class="bg-gray-800 hover:bg-gray-900 text-white text-sm px-4 py-2 rounded-xl transition shadow flex items-center">
+                        <i class="fa-solid fa-key mr-2"></i> Ganti Password Admin
+                    </button>
+                    <button onclick="logoutAdmin()" class="bg-rose-50 hover:bg-rose-100 text-rose-600 text-sm px-4 py-2 rounded-xl transition font-medium">
+                        <i class="fa-solid fa-right-from-bracket mr-1"></i> Keluar Admin
+                    </button>
+                </div>
+            </div>
+
+            <!-- Admin Sub-navigation / Accordions -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- 1. Form Manajemen Lokasi Kerjaan -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+                    <h3 class="font-bold text-gray-800 text-md border-b pb-2 flex items-center">
+                        <i class="fa-solid fa-map-pin text-brand-600 mr-2"></i> Tambah Lokasi / Proyek
+                    </h3>
+                    <form id="formProject" onsubmit="saveProject(event)" class="space-y-3">
+                        <input type="hidden" id="projectId">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Proyek / Lokasi *</label>
+                            <input type="text" id="projectName" required class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="Contoh: Renovasi Rumah Bpk. Budi">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat / Lokasi</label>
+                            <input type="text" id="projectAddress" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="Jl. Melati No. 10">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Tgl Mulai</label>
+                                <input type="date" id="projectStart" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Estimasi Selesai</label>
+                                <input type="date" id="projectEnd" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-600 mb-1">Keterangan / Deskripsi</label>
+                            <textarea id="projectDesc" rows="2" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="Catatan tambahan..."></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-medium py-2 rounded-xl text-sm shadow transition">
+                            Simpan Lokasi Kerjaan
+                        </button>
+                    </form>
+
+                    <div class="mt-4">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase mb-2">Daftar Lokasi Kerja</h4>
+                        <div id="adminProjectList" class="space-y-2 max-h-48 overflow-y-auto"></div>
+                    </div>
+                </div>
+
+                <!-- 2. Form Keuangan (Uang Masuk & Pengeluaran Nota) -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+                    <!-- Uang Masuk -->
+                    <div class="space-y-3">
+                        <h3 class="font-bold text-gray-800 text-md border-b pb-2 flex items-center">
+                            <i class="fa-solid fa-wallet text-emerald-600 mr-2"></i> Input Uang Masuk
+                        </h3>
+                        <form id="formIncome" onsubmit="saveIncome(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Pilih Proyek *</label>
+                                <select id="incomeProject" required class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tanggal *</label>
+                                    <input type="date" id="incomeDate" required class="w-full border rounded-xl px-3 py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tipe *</label>
+                                    <select id="incomeType" class="w-full border rounded-xl px-3 py-2 text-sm">
+                                        <option value="Tunai">Tunai</option>
+                                        <option value="Non-Tunai">Non-Tunai (Transfer)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Jumlah (Rp) *</label>
+                                <input type="number" id="incomeAmount" required min="0" class="w-full border rounded-xl px-3 py-2 text-sm" placeholder="5000000">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Keterangan</label>
+                                <input type="text" id="incomeNote" class="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Termin 1">
+                            </div>
+                            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-xl text-sm shadow transition">
+                                Simpan Uang Masuk
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Pengeluaran Nota -->
+                    <div class="space-y-3 pt-4 border-t">
+                        <h3 class="font-bold text-gray-800 text-md border-b pb-2 flex items-center">
+                            <i class="fa-solid fa-receipt text-rose-600 mr-2"></i> Input Pengeluaran Nota
+                        </h3>
+                        <form id="formExpense" onsubmit="saveExpense(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Pilih Proyek *</label>
+                                <select id="expenseProject" required class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tanggal *</label>
+                                    <input type="date" id="expenseDate" required class="w-full border rounded-xl px-3 py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">No. Nota</label>
+                                    <input type="text" id="expenseNo" class="w-full border rounded-xl px-3 py-2 text-sm" placeholder="NOTA-001">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Keterangan / Item Belanja *</label>
+                                <input type="text" id="expenseDesc" required class="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Beli semen 10 sak & pasir">
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Jumlah (Rp) *</label>
+                                    <input type="number" id="expenseAmount" required min="0" class="w-full border rounded-xl px-3 py-2 text-sm" placeholder="750000">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Foto Nota</label>
+                                    <input type="file" id="expensePhoto" accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-medium py-2 rounded-xl text-sm shadow transition">
+                                Simpan Pengeluaran Nota
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 3. Pekerja, Upah & Dokumentasi Foto Before/After -->
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-6">
+                    <!-- Tipe Pekerja & Upah -->
+                    <div class="space-y-3">
+                        <h3 class="font-bold text-gray-800 text-md border-b pb-2 flex items-center">
+                            <i class="fa-solid fa-users-gear text-amber-600 mr-2"></i> Upah Pekerja Harian
+                        </h3>
+                        <form id="formWage" onsubmit="saveWage(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Pilih Proyek *</label>
+                                <select id="wageProject" required class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Tanggal *</label>
+                                    <input type="date" id="wageDate" required class="w-full border rounded-xl px-3 py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Nama / Tipe Pekerja *</label>
+                                    <input type="text" id="workerName" required class="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Tukang Batu / Pak Joko">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Jumlah Hadir (Org) *</label>
+                                    <input type="number" id="workerCount" required min="1" value="1" class="w-full border rounded-xl px-3 py-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Upah Per Hari (Rp) *</label>
+                                    <input type="number" id="wagePerDay" required min="0" class="w-full border rounded-xl px-3 py-2 text-sm" placeholder="150000">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-medium py-2 rounded-xl text-sm shadow transition">
+                                Simpan Upah Pekerja
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Foto Before / After -->
+                    <div class="space-y-3 pt-4 border-t">
+                        <h3 class="font-bold text-gray-800 text-md border-b pb-2 flex items-center">
+                            <i class="fa-solid fa-camera text-indigo-600 mr-2"></i> Foto Before / After
+                        </h3>
+                        <form id="formGallery" onsubmit="saveGallery(event)" class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Pilih Proyek *</label>
+                                <select id="galleryProject" required class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Status Foto *</label>
+                                    <select id="galleryStatus" class="w-full border rounded-xl px-3 py-2 text-sm">
+                                        <option value="Before">Before (Sebelum)</option>
+                                        <option value="After">After (Sesudah)</option>
+                                        <option value="Progress">Progress (Proses)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 mb-1">Pilih File Foto *</label>
+                                    <input type="file" id="galleryPhoto" required accept="image/*" class="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 mb-1">Keterangan Foto</label>
+                                <input type="text" id="galleryCaption" class="w-full border rounded-xl px-3 py-2 text-sm" placeholder="Pemasangan keramik lantai">
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 rounded-xl text-sm shadow transition">
+                                Upload Foto Dokumentasi
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-auto py-4 text-center text-xs text-gray-500">
+        &copy; 2026 <strong>LapPuguh</strong>. Aplikasi Laporan Pekerjaan & Konstruksi Profesional.
+    </footer>
+
+    <!-- ==================== MODAL PIN ADMIN ==================== -->
+    <div id="modalPin" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto text-xl mb-2">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <h3 class="font-bold text-lg text-gray-800">Autentikasi Admin</h3>
+                <p class="text-xs text-gray-500">Masukkan Password Admin untuk mengakses panel.</p>
+            </div>
+            <form onsubmit="verifyPin(event)" class="space-y-3">
+                <input type="password" id="adminPinInput" required class="w-full border text-center text-xl tracking-widest rounded-xl px-3 py-3 focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="••••">
+                <div class="flex space-x-2">
+                    <button type="button" onclick="closePinModal()" class="w-1/2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition">Batal</button>
+                    <button type="submit" class="w-1/2 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-xl text-sm font-medium shadow transition">Masuk</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL GANTI PASSWORD ADMIN ==================== -->
+    <div id="modalChangePassword" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 bg-gray-100 text-gray-800 rounded-full flex items-center justify-center mx-auto text-xl mb-2">
+                    <i class="fa-solid fa-key"></i>
+                </div>
+                <h3 class="font-bold text-lg text-gray-800">Ganti Password Admin</h3>
+                <p class="text-xs text-gray-500">Masukkan password lama dan password baru Anda.</p>
+            </div>
+            <form onsubmit="updateAdminPassword(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Password Lama *</label>
+                    <input type="password" id="oldPassword" required class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="Password saat ini">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Password Baru *</label>
+                    <input type="password" id="newPassword" required class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="Minimal 4 karakter">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Konfirmasi Password Baru *</label>
+                    <input type="password" id="confirmPassword" required class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" placeholder="Ulangi password baru">
+                </div>
+                <div class="flex space-x-2 pt-2">
+                    <button type="button" onclick="closeChangePasswordModal()" class="w-1/2 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium transition">Batal</button>
+                    <button type="submit" class="w-1/2 bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-xl text-sm font-medium shadow transition">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ==================== MODAL PESAN NOTIFIKASI (CUSTOM ALERT) ==================== -->
+    <div id="customModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
+            <div id="modalIcon" class="w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+                <h3 id="modalTitle" class="font-bold text-lg text-gray-800">Berhasil</h3>
+                <p id="modalMessage" class="text-sm text-gray-500 mt-1">Pesan notifikasi...</p>
+            </div>
+            <button onclick="closeCustomModal()" class="w-full bg-brand-600 hover:bg-brand-700 text-white py-2.5 rounded-xl text-sm font-medium shadow transition">OK</button>
+        </div>
+    </div>
+
+    <!-- ==================== LOGIKA JAVASCRIPT UTAMA ==================== -->
+    <script>
+        // Inisialisasi Database LocalStorage
+        function createEmptyDB() {
+            return { projects: [], incomes: [], expenses: [], wages: [], galleries: [] };
+        }
+
+        function loadDB() {
+            try {
+                const saved = JSON.parse(localStorage.getItem('lappuguh_db') || 'null');
+                if (!saved || typeof saved !== 'object') return createEmptyDB();
+                return {
+                    projects: Array.isArray(saved.projects) ? saved.projects : [],
+                    incomes: Array.isArray(saved.incomes) ? saved.incomes : [],
+                    expenses: Array.isArray(saved.expenses) ? saved.expenses : [],
+                    wages: Array.isArray(saved.wages) ? saved.wages : [],
+                    galleries: Array.isArray(saved.galleries) ? saved.galleries : []
+                };
+            } catch (error) {
+                console.error('Data tersimpan tidak dapat dibaca:', error);
+                return createEmptyDB();
+            }
+        }
+
+        let db = loadDB();
+
+        // Inisialisasi Password Admin default jika belum ada
+        if (!localStorage.getItem('lappuguh_admin_password')) {
+            localStorage.setItem('lappuguh_admin_password', '1234');
+        }
+
+        let isAdminLoggedIn = false;
+        let pendingTabTarget = '';
+
+        // Fungsi Notifikasi Pengganti alert()
+        function showNotification(title, message, isError = false) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+            const iconDiv = document.getElementById('modalIcon');
+            if (isError) {
+                iconDiv.className = "w-12 h-12 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto text-xl";
+                iconDiv.innerHTML = '<i class="fa-solid fa-circle-exclamation"></i>';
+            } else {
+                iconDiv.className = "w-12 h-12 bg-brand-50 text-brand-600 rounded-full flex items-center justify-center mx-auto text-xl";
+                iconDiv.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            }
+            document.getElementById('customModal').classList.remove('hidden');
+        }
+
+        function closeCustomModal() {
+            document.getElementById('customModal').classList.add('hidden');
+        }
+
+        // Simpan database ke LocalStorage
+        function saveDB() {
+            try {
+                localStorage.setItem('lappuguh_db', JSON.stringify(db));
+                return true;
+            } catch (error) {
+                console.error('Gagal menyimpan data:', error);
+                showNotification(
+                    'Penyimpanan Penuh',
+                    'Data tidak dapat disimpan. Foto mungkin terlalu besar. Unduh backup, lalu kurangi ukuran foto atau hapus foto yang tidak diperlukan.',
+                    true
+                );
+                return false;
+            }
+        }
+
+        // Navigasi Tab
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('bg-brand-800', 'text-white'));
+            if(tabId === 'dashboard') {
+                document.querySelector('button[onclick*="dashboard"]').classList.add('bg-brand-800', 'text-white');
+                renderDashboard();
+            } else if(tabId === 'admin') {
+                document.querySelector('button[onclick*="admin"]').classList.add('bg-brand-800', 'text-white');
+                renderAdminPanel();
+            }
+        }
+
+        // Proteksi Akses Panel Admin dengan PIN
+        function checkAdminAccess(targetTab) {
+            pendingTabTarget = targetTab;
+            if (isAdminLoggedIn) {
+                switchTab(targetTab);
+            } else {
+                document.getElementById('adminPinInput').value = '';
+                document.getElementById('modalPin').classList.remove('hidden');
+                document.getElementById('adminPinInput').focus();
+            }
+        }
+
+        function closePinModal() {
+            document.getElementById('modalPin').classList.add('hidden');
+        }
+
+        function verifyPin(e) {
+            e.preventDefault();
+            const inputPin = document.getElementById('adminPinInput').value;
+            const currentPassword = localStorage.getItem('lappuguh_admin_password') || '1234';
+            
+            if (inputPin === currentPassword) {
+                isAdminLoggedIn = true;
+                closePinModal();
+                switchTab(pendingTabTarget);
+            } else {
+                showNotification("Akses Ditolak", "Password Admin yang Anda masukkan salah!", true);
+            }
+        }
+
+        function logoutAdmin() {
+            isAdminLoggedIn = false;
+            switchTab('dashboard');
+            showNotification("Keluar", "Anda telah keluar dari Panel Admin.");
+        }
+
+        // Fitur Ganti Password Admin
+        function openChangePasswordModal() {
+            document.getElementById('oldPassword').value = '';
+            document.getElementById('newPassword').value = '';
+            document.getElementById('confirmPassword').value = '';
+            document.getElementById('modalChangePassword').classList.remove('hidden');
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('modalChangePassword').classList.add('hidden');
+        }
+
+        function updateAdminPassword(e) {
+            e.preventDefault();
+            const oldPass = document.getElementById('oldPassword').value;
+            const newPass = document.getElementById('newPassword').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+            const currentPass = localStorage.getItem('lappuguh_admin_password') || '1234';
+
+            if (oldPass !== currentPass) {
+                showNotification("Gagal", "Password lama tidak sesuai!", true);
+                return;
+            }
+
+            if (newPass.length < 4) {
+                showNotification("Gagal", "Password baru minimal harus 4 karakter!", true);
+                return;
+            }
+
+            if (newPass !== confirmPass) {
+                showNotification("Gagal", "Konfirmasi password baru tidak cocok!", true);
+                return;
+            }
+
+            localStorage.setItem('lappuguh_admin_password', newPass);
+            closeChangePasswordModal();
+            showNotification("Berhasil", "Password Admin berhasil diperbarui!");
+        }
+
+        // Helper Format Rupiah
+        function formatRupiah(num) {
+            return 'Rp ' + Number(num).toLocaleString('id-ID');
+        }
+
+        // Helper Komversi File ke Base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                if (!file || !file.type.startsWith('image/')) {
+                    reject(new Error('File harus berupa gambar.'));
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('Foto gagal dibaca.'));
+                reader.onload = () => {
+                    const image = new Image();
+                    image.onerror = () => reject(new Error('Format foto tidak didukung.'));
+                    image.onload = () => {
+                        const maxSide = 1400;
+                        const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.max(1, Math.round(image.width * scale));
+                        canvas.height = Math.max(1, Math.round(image.height * scale));
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.78));
+                    };
+                    image.src = reader.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // ==================== MANAJEMEN DATA PROYEK ====================
+        function saveProject(e) {
+            e.preventDefault();
+            const id = document.getElementById('projectId').value;
+            const name = document.getElementById('projectName').value;
+            const address = document.getElementById('projectAddress').value;
+            const start = document.getElementById('projectStart').value;
+            const end = document.getElementById('projectEnd').value;
+            const desc = document.getElementById('projectDesc').value;
+
+            if (id) {
+                const proj = db.projects.find(p => p.id == id);
+                if (proj) {
+                    proj.name = name; proj.address = address; proj.start = start; proj.end = end; proj.desc = desc;
+                }
+            } else {
+                const newProj = {
+                    id: Date.now(),
+                    name, address, start, end, desc
+                };
+                db.projects.push(newProj);
+            }
+
+            saveDB();
+            document.getElementById('formProject').reset();
+            document.getElementById('projectId').value = '';
+            renderAdminPanel();
+            showNotification("Berhasil", "Data lokasi kerja berhasil disimpan.");
+        }
+
+        function editProject(id) {
+            const p = db.projects.find(item => item.id == id);
+            if (p) {
+                document.getElementById('projectId').value = p.id;
+                document.getElementById('projectName').value = p.name;
+                document.getElementById('projectAddress').value = p.address || '';
+                document.getElementById('projectStart').value = p.start || '';
+                document.getElementById('projectEnd').value = p.end || '';
+                document.getElementById('projectDesc').value = p.desc || '';
+            }
+        }
+
+        function deleteProject(id) {
+            if (confirm("Hapus lokasi proyek ini beserta seluruh data keuangan dan dokumentasinya?")) {
+                db.projects = db.projects.filter(p => p.id != id);
+                db.incomes = db.incomes.filter(i => i.projectId != id);
+                db.expenses = db.expenses.filter(ex => ex.projectId != id);
+                db.wages = db.wages.filter(w => w.projectId != id);
+                db.galleries = db.galleries.filter(g => g.projectId != id);
+                saveDB();
+                renderAdminPanel();
+                showNotification("Terhapus", "Lokasi proyek berhasil dihapus.");
+            }
+        }
+
+        // ==================== MANAJEMEN KEUANGAN & PEKERJA ====================
+        function saveIncome(e) {
+            e.preventDefault();
+            const newItem = {
+                id: Date.now(),
+                projectId: document.getElementById('incomeProject').value,
+                date: document.getElementById('incomeDate').value,
+                type: document.getElementById('incomeType').value,
+                amount: parseFloat(document.getElementById('incomeAmount').value),
+                note: document.getElementById('incomeNote').value
+            };
+            db.incomes.push(newItem);
+            saveDB();
+            document.getElementById('formIncome').reset();
+            setDefaultDates();
+            renderAdminPanel();
+            showNotification("Berhasil", "Uang masuk berhasil dicatat.");
+        }
+
+        function deleteIncome(id) {
+            db.incomes = db.incomes.filter(i => i.id != id);
+            saveDB();
+            renderAdminPanel();
+        }
+
+        async function saveExpense(e) {
+            e.preventDefault();
+            let photoUrl = '';
+            const photoFile = document.getElementById('expensePhoto').files[0];
+            if (photoFile) {
+                photoUrl = await fileToBase64(photoFile);
+            }
+
+            const newItem = {
+                id: Date.now(),
+                projectId: document.getElementById('expenseProject').value,
+                date: document.getElementById('expenseDate').value,
+                expenseNo: document.getElementById('expenseNo').value,
+                desc: document.getElementById('expenseDesc').value,
+                amount: parseFloat(document.getElementById('expenseAmount').value),
+                photo: photoUrl
+            };
+            db.expenses.push(newItem);
+            saveDB();
+            document.getElementById('formExpense').reset();
+            setDefaultDates();
+            renderAdminPanel();
+            showNotification("Berhasil", "Pengeluaran nota berhasil dicatat.");
+        }
+
+        function deleteExpense(id) {
+            db.expenses = db.expenses.filter(e => e.id != id);
+            saveDB();
+            renderAdminPanel();
+        }
+
+        function saveWage(e) {
+            e.preventDefault();
+            const count = parseInt(document.getElementById('workerCount').value);
+            const rate = parseFloat(document.getElementById('wagePerDay').value);
+            const newItem = {
+                id: Date.now(),
+                projectId: document.getElementById('wageProject').value,
+                date: document.getElementById('wageDate').value,
+                workerName: document.getElementById('workerName').value,
+                count: count,
+                rate: rate,
+                total: count * rate
+            };
+            db.wages.push(newItem);
+            saveDB();
+            document.getElementById('formWage').reset();
+            setDefaultDates();
+            renderAdminPanel();
+            showNotification("Berhasil", "Upah pekerja berhasil dicatat.");
+        }
+
+        function deleteWage(id) {
+            db.wages = db.wages.filter(w => w.id != id);
+            saveDB();
+            renderAdminPanel();
+        }
+
+        async function saveGallery(e) {
+            e.preventDefault();
+            const photoFile = document.getElementById('galleryPhoto').files[0];
+            let photoUrl = '';
+            if (photoFile) {
+                photoUrl = await fileToBase64(photoFile);
+            }
+
+            const newItem = {
+                id: Date.now(),
+                projectId: document.getElementById('galleryProject').value,
+                status: document.getElementById('galleryStatus').value,
+                photo: photoUrl,
+                caption: document.getElementById('galleryCaption').value
+            };
+            db.galleries.push(newItem);
+            saveDB();
+            document.getElementById('formGallery').reset();
+            renderAdminPanel();
+            showNotification("Berhasil", "Dokumentasi foto berhasil disimpan.");
+        }
+
+        function deleteGallery(id) {
+            db.galleries = db.galleries.filter(g => g.id != id);
+            saveDB();
+            renderAdminPanel();
+        }
+
+        // Set tanggal default ke hari ini pada form input
+        function setDefaultDates() {
+            const today = new Date().toISOString().split('T')[0];
+            const dateInputs = ['incomeDate', 'expenseDate', 'wageDate'];
+            dateInputs.forEach(id => {
+                const el = document.getElementById(id);
+                if(el && !el.value) el.value = today;
+            });
+        }
+
+        // ==================== RENDER DASHBOARD ====================
+        function renderDashboard() {
+            const filterId = document.getElementById('filterProject').value;
+            
+            // Populate filter dropdown
+            const filterSelect = document.getElementById('filterProject');
+            let filterHtml = '<option value="">Semua Lokasi / Proyek</option>';
+            db.projects.forEach(p => {
+                filterHtml += `<option value="${p.id}" ${filterId == p.id ? 'selected' : ''}>${p.name}</option>`;
+            });
+            filterSelect.innerHTML = filterHtml;
+
+            // Filter data
+            const incomes = filterId ? db.incomes.filter(i => i.projectId == filterId) : db.incomes;
+            const expenses = filterId ? db.expenses.filter(ex => ex.projectId == filterId) : db.expenses;
+            const wages = filterId ? db.wages.filter(w => w.projectId == filterId) : db.wages;
+            const galleries = filterId ? db.galleries.filter(g => g.projectId == filterId) : db.galleries;
+
+            // Hitung Total
+            const totalIncome = incomes.reduce((sum, item) => sum + item.amount, 0);
+            const totalExpense = expenses.reduce((sum, item) => sum + item.amount, 0);
+            const totalWages = wages.reduce((sum, item) => sum + item.total, 0);
+            const totalOut = totalExpense + totalWages;
+            const balance = totalIncome - totalOut;
+
+            document.getElementById('sumIncome').innerText = formatRupiah(totalIncome);
+            document.getElementById('sumExpense').innerText = formatRupiah(totalExpense);
+            document.getElementById('sumWages').innerText = formatRupiah(totalWages);
+            document.getElementById('sumBalance').innerText = formatRupiah(balance);
+            document.getElementById('sumBalance').className = `text-lg font-bold ${balance >= 0 ? 'text-gray-800' : 'text-rose-600'}`;
+
+            // Project Details Info
+            const detailsDiv = document.getElementById('dashboardProjectDetails');
+            if (filterId) {
+                const p = db.projects.find(item => item.id == filterId);
+                if (p) {
+                    detailsDiv.innerHTML = `
+                        <div>
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Nama Lokasi</p>
+                            <p class="text-base font-bold text-gray-800">${p.name}</p>
+                            <p class="text-xs text-gray-500 mt-1 font-semibold uppercase">Alamat</p>
+                            <p class="text-sm text-gray-700">${p.address || '-'}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-semibold uppercase">Periode Pengerjaan</p>
+                            <p class="text-sm text-gray-700">${p.start || '-'} s/d ${p.end || '-'}</p>
+                            <p class="text-xs text-gray-500 mt-1 font-semibold uppercase">Keterangan</p>
+                            <p class="text-sm text-gray-700">${p.desc || '-'}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                detailsDiv.innerHTML = `<p class="text-gray-500 italic">Menampilkan rangkuman seluruh lokasi kerja. Silakan pilih lokasi spesifik pada filter di atas untuk melihat detail lengkap.</p>`;
+            }
+
+            // Table Income
+            const incomeTbody = document.getElementById('tableIncomeList');
+            if (incomes.length === 0) {
+                incomeTbody.innerHTML = `<tr><td colspan="3" class="p-3 text-center text-gray-400">Belum ada data uang masuk</td></tr>`;
+            } else {
+                incomeTbody.innerHTML = incomes.map(i => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-2.5 text-gray-600">${i.date}</td>
+                        <td class="p-2.5"><span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium">${i.type}</span></td>
+                        <td class="p-2.5 text-right font-semibold text-emerald-600">${formatRupiah(i.amount)}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Table Expense
+            const expenseTbody = document.getElementById('tableExpenseList');
+            if (expenses.length === 0) {
+                expenseTbody.innerHTML = `<tr><td colspan="4" class="p-3 text-center text-gray-400">Belum ada data pengeluaran</td></tr>`;
+            } else {
+                expenseTbody.innerHTML = expenses.map(ex => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-2.5 text-gray-600">${ex.date}<br><span class="text-xs text-gray-400">${ex.expenseNo || '-'}</span></td>
+                        <td class="p-2.5 text-gray-800">${ex.desc}</td>
+                        <td class="p-2.5 text-right font-semibold text-rose-600">${formatRupiah(ex.amount)}</td>
+                        <td class="p-2.5 text-center">
+                            ${ex.photo ? `<a href="${ex.photo}" target="_blank" class="text-brand-600 hover:underline text-xs"><i class="fa-solid fa-image"></i> Lihat</a>` : '<span class="text-gray-300 text-xs">Tanpa Foto</span>'}
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // Table Wage
+            const wageTbody = document.getElementById('tableWageList');
+            if (wages.length === 0) {
+                wageTbody.innerHTML = `<tr><td colspan="5" class="p-3 text-center text-gray-400">Belum ada data upah pekerja</td></tr>`;
+            } else {
+                wageTbody.innerHTML = wages.map(w => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-2.5 text-gray-600">${w.date}</td>
+                        <td class="p-2.5 text-gray-800 font-medium">${w.workerName}</td>
+                        <td class="p-2.5 text-center">${w.count} H</td>
+                        <td class="p-2.5 text-right text-gray-600">${formatRupiah(w.rate)}</td>
+                        <td class="p-2.5 text-right font-semibold text-amber-600">${formatRupiah(w.total)}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Gallery
+            const galleryDiv = document.getElementById('dashboardGallery');
+            if (galleries.length === 0) {
+                galleryDiv.innerHTML = `<p class="text-gray-400 text-sm italic col-span-full">Belum ada foto dokumentasi.</p>`;
+            } else {
+                galleryDiv.innerHTML = galleries.map(g => `
+                    <div class="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 shadow-sm flex flex-col">
+                        <div class="relative h-48 bg-gray-200">
+                            <img src="${g.photo}" alt="Dokumentasi" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/400x300/e2e8f0/64748b?text=Foto+Tidak+Tersedia'">
+                            <span class="absolute top-2 left-2 px-2.5 py-1 rounded-xl text-xs font-bold shadow ${g.status === 'Before' ? 'bg-amber-500 text-white' : g.status === 'After' ? 'bg-emerald-600 text-white' : 'bg-indigo-600 text-white'}">${g.status}</span>
+                        </div>
+                        <div class="p-3 flex-grow flex flex-col justify-between">
+                            <p class="text-xs text-gray-700">${g.caption || 'Tanpa keterangan'}</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // ==================== RENDER ADMIN PANEL ====================
+        function renderAdminPanel() {
+            setDefaultDates();
+            
+            // Update dropdown projects across all admin forms
+            const projectSelects = ['incomeProject', 'expenseProject', 'wageProject', 'galleryProject'];
+            projectSelects.forEach(selId => {
+                const el = document.getElementById(selId);
+                if(el) {
+                    el.innerHTML = db.projects.length === 0 ? '<option value="">-- Buat Proyek Dulu --</option>' : db.projects.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                }
+            });
+
+            // Admin Project List with Delete & Edit buttons
+            const adminProjList = document.getElementById('adminProjectList');
+            if (db.projects.length === 0) {
+                adminProjList.innerHTML = `<p class="text-xs text-gray-400 italic">Belum ada lokasi proyek.</p>`;
+            } else {
+                adminProjList.innerHTML = db.projects.map(p => `
+                    <div class="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl text-sm border border-gray-100">
+                        <div>
+                            <p class="font-bold text-gray-800">${p.name}</p>
+                            <p class="text-xs text-gray-500">${p.address || '-'}</p>
+                        </div>
+                        <div class="flex space-x-1">
+                            <button onclick="editProject(${p.id})" class="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Edit"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteProject(${p.id})" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // ==================== EXPORT & BACKUP ====================
+        function exportToExcel() {
+            if (typeof XLSX === 'undefined') {
+                showNotification('Gagal', 'Fitur Excel tidak dapat dimuat. Periksa koneksi internet lalu coba lagi.', true);
+                return;
+            }
+            const selectedProject = document.getElementById('filterProject').value;
+            const projectName = id => (db.projects.find(p => String(p.id) === String(id)) || {}).name || '-';
+            const incomes = selectedProject ? db.incomes.filter(i => String(i.projectId) === String(selectedProject)) : db.incomes;
+            const expenses = selectedProject ? db.expenses.filter(i => String(i.projectId) === String(selectedProject)) : db.expenses;
+            const wages = selectedProject ? db.wages.filter(i => String(i.projectId) === String(selectedProject)) : db.wages;
+            if (incomes.length === 0 && expenses.length === 0 && wages.length === 0) {
+                showNotification("Perhatian", "Belum ada data keuangan untuk diekspor.", true);
+                return;
+            }
+
+            const wb = XLSX.utils.book_new();
+
+            // Sheet Uang Masuk
+            const incData = incomes.map(i => ({ Proyek: projectName(i.projectId), Tanggal: i.date, Tipe: i.type, Jumlah: i.amount, Keterangan: i.note }));
+            const wsInc = XLSX.utils.json_to_sheet(incData);
+            XLSX.utils.book_append_sheet(wb, wsInc, "Uang Masuk");
+
+            // Sheet Pengeluaran
+            const expData = expenses.map(ex => ({ Proyek: projectName(ex.projectId), Tanggal: ex.date, 'No. Nota': ex.expenseNo, Keterangan: ex.desc, Jumlah: ex.amount }));
+            const wsExp = XLSX.utils.json_to_sheet(expData);
+            XLSX.utils.book_append_sheet(wb, wsExp, "Pengeluaran Nota");
+
+            // Sheet Upah Pekerja
+            const wageData = wages.map(w => ({ Proyek: projectName(w.projectId), Tanggal: w.date, Pekerja: w.workerName, 'Jumlah Hadir': w.count, 'Upah/Hari': w.rate, Total: w.total }));
+            const wsWage = XLSX.utils.json_to_sheet(wageData);
+            XLSX.utils.book_append_sheet(wb, wsWage, "Upah Pekerja");
+
+            XLSX.writeFile(wb, "Laporan_LapPuguh.xlsx");
+            showNotification("Berhasil", "Laporan Excel berhasil diunduh.");
+        }
+
+        function exportToPDF() {
+            if (typeof html2pdf === 'undefined') {
+                showNotification('Gagal', 'Fitur PDF tidak dapat dimuat. Periksa koneksi internet lalu coba lagi.', true);
+                return;
+            }
+            const element = document.getElementById('printableArea');
+            const opt = {
+                margin:       10,
+                filename:     'Laporan_LapPuguh.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().from(element).set(opt).save();
+        }
+
+        function exportJSONData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "backup_lappuguh_" + new Date().toISOString().split('T')[0] + ".json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showNotification("Berhasil", "Backup data JSON berhasil diunduh.");
+        }
+
+        function importJSONData(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = e => {
+                    try {
+                        const parsed = JSON.parse(e.target.result);
+                        if (parsed && Array.isArray(parsed.projects) && Array.isArray(parsed.incomes)
+                            && Array.isArray(parsed.expenses) && Array.isArray(parsed.wages)
+                            && Array.isArray(parsed.galleries)) {
+                            if (!confirm('Pulihkan backup? Data saat ini akan diganti dengan data dari file backup.')) {
+                                event.target.value = '';
+                                return;
+                            }
+                            db = parsed;
+                            if (saveDB()) {
+                                renderDashboard();
+                                renderAdminPanel();
+                                showNotification("Berhasil", "Data berhasil direstore dari file backup.");
+                            }
+                        } else {
+                            showNotification("Gagal", "Format file JSON backup tidak valid.", true);
+                        }
+                    } catch (err) {
+                        showNotification("Gagal", "Terjadi kesalahan saat membaca file JSON.", true);
+                    }
+                };
+                fileReader.onerror = () => showNotification('Gagal', 'File backup tidak dapat dibaca.', true);
+            }
+            event.target.value = '';
+        }
+
+        // Inisialisasi awal saat halaman dimuat
+        window.onload = function() {
+            renderDashboard();
+        };
+    </script>
+</body>
+</html>
