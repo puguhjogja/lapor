@@ -1,0 +1,1993 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Laporan Kerja Proyek Konstruksi Multi-Proyek</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            .print-only {
+                display: block !important;
+            }
+            body {
+                background: white !important;
+                color: black !important;
+            }
+            .page-break {
+                page-break-before: always;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-transform duration-300 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 no-print">
+        <i data-lucide="info" id="toast-icon" class="w-5 h-5 text-amber-400"></i>
+        <span id="toast-msg" class="text-sm font-medium">Pesan notifikasi</span>
+    </div>
+
+    <!-- Sidebar / Navigasi -->
+    <aside class="w-full md:w-64 bg-slate-900 text-slate-200 flex-shrink-0 no-print flex flex-col justify-between">
+        <div>
+            <!-- Header Brand -->
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-amber-500 text-slate-900 rounded-lg font-bold">
+                        <i data-lucide="hard-hat" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg text-white leading-tight">ProKonstruct</h1>
+                        <p class="text-xs text-amber-400 font-medium">Site Management v2.0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Selector Multi-Proyek -->
+            <div class="p-3 mx-3 my-4 bg-slate-800/80 rounded-xl border border-slate-700/60 space-y-2">
+                <div class="flex justify-between items-center text-xs text-slate-400">
+                    <span class="font-medium flex items-center gap-1"><i data-lucide="building" class="w-3.5 h-3.5 text-amber-400"></i> Pilih Proyek</span>
+                    <button onclick="openNewProjectModal()" class="text-amber-400 hover:underline text-xs flex items-center gap-0.5">
+                        <i data-lucide="plus" class="w-3 h-3"></i> Baru
+                    </button>
+                </div>
+                <select id="project-selector" onchange="changeProject(this.value)" class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-500">
+                    <!-- Dynamic Projects -->
+                </select>
+                <div id="project-info-mini" class="text-[11px] text-slate-400 truncate">
+                    --
+                </div>
+            </div>
+
+            <!-- Menu Navigation -->
+            <nav class="px-3 space-y-1">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors bg-amber-500 text-slate-950 font-semibold shadow-md">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Dashboard
+                </button>
+                <button onclick="switchTab('jobs')" id="nav-jobs" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="list-todo" class="w-4 h-4"></i> Pekerja & Progres
+                </button>
+                <button onclick="switchTab('workers')" id="nav-workers" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="users" class="w-4 h-4"></i> Pekerja & Absensi
+                </button>
+                <button onclick="switchTab('finance')" id="nav-finance" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="wallet" class="w-4 h-4"></i> Keuangan & Budget
+                </button>
+                <button onclick="switchTab('reports')" id="nav-reports" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Laporan & Cetak
+                </button>
+                <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors">
+                    <i data-lucide="settings" class="w-4 h-4"></i> Pengaturan Admin
+                </button>
+            </nav>
+        </div>
+
+        <!-- Footer Sidebar -->
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-500 flex justify-between items-center">
+            <span>Status: <span class="text-emerald-400 font-medium">Multi-Project</span></span>
+            <button id="btn-sidebar-reset" onclick="openResetModal()" class="text-rose-400 hover:underline flex items-center gap-1 admin-only">
+                <i data-lucide="rotate-ccw" class="w-3 h-3"></i> Reset Data
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+
+        <!-- Top HeaderBar -->
+        <header class="bg-white border-b border-slate-200 px-6 py-4 no-print flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3">
+                    <h2 id="page-title" class="text-2xl font-bold text-slate-800">Dashboard Proyek</h2>
+                    <span id="role-badge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1">
+                        <i data-lucide="eye" class="w-3.5 h-3.5 text-slate-500"></i> Mode Viewer
+                    </span>
+                </div>
+                <p id="page-subtitle" class="text-sm text-slate-500">Monitoring progres harian, tenaga kerja, dan anggaran secara real-time.</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Admin Lock / Switch Button -->
+                <button id="btn-admin-auth" onclick="toggleAdminAuth()" class="bg-slate-800 hover:bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition">
+                    <i data-lucide="lock" class="w-3.5 h-3.5 text-amber-400"></i> <span id="admin-auth-text">Login Admin</span>
+                </button>
+
+                <span id="current-date-badge" class="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 border border-slate-200">
+                    <i data-lucide="calendar" class="w-4 h-4 text-amber-500"></i> <span id="live-date">--</span>
+                </span>
+                <button onclick="openPrintModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm">
+                    <i data-lucide="printer" class="w-4 h-4 text-amber-400"></i> Cetak Laporan
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="p-6 space-y-6 flex-1">
+
+            <!-- ================= TAB 1: DASHBOARD ================= -->
+            <section id="tab-dashboard" class="tab-content space-y-6">
+                <!-- Stat Cards Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <!-- Stat Card 1 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Progress</p>
+                            <h3 id="stat-progress" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
+                            <p class="text-xs text-emerald-600 font-medium mt-1 flex items-center gap-1">
+                                <i data-lucide="trending-up" class="w-3 h-3"></i> Rata-rata Progres
+                            </p>
+                        </div>
+                        <div class="p-3 bg-amber-100 text-amber-600 rounded-xl">
+                            <i data-lucide="percent" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 2 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Pekerja Aktif Hari Ini</p>
+                            <h3 id="stat-workers" class="text-2xl font-bold text-slate-800 mt-1">0 Orang</h3>
+                            <p class="text-xs text-slate-500 mt-1">Dari total <span id="stat-total-workers-registered">0</span> terdaftar</p>
+                        </div>
+                        <div class="p-3 bg-blue-100 text-blue-600 rounded-xl">
+                            <i data-lucide="users" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 3 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Pengeluaran</p>
+                            <h3 id="stat-expenses" class="text-2xl font-bold text-slate-800 mt-1">Rp 0</h3>
+                            <p class="text-xs text-slate-500 mt-1">Sisa: <span id="stat-remaining-budget" class="font-semibold text-emerald-600">Rp 0</span></p>
+                        </div>
+                        <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl">
+                            <i data-lucide="banknote" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 4 -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sub-Pekerjaan</p>
+                            <h3 id="stat-jobs-count" class="text-2xl font-bold text-slate-800 mt-1">0 / 0</h3>
+                            <p class="text-xs text-amber-600 font-medium mt-1">Selesai / Total Item</p>
+                        </div>
+                        <div class="p-3 bg-purple-100 text-purple-600 rounded-xl">
+                            <i data-lucide="check-square" class="w-6 h-6"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Progress Chart -->
+                    <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="font-bold text-slate-800 text-base">Progress Sub-Pekerjaan (%)</h3>
+                            <span class="text-xs text-slate-400">Pekerjaan vs Capaian Lapangan</span>
+                        </div>
+                        <div class="h-64 relative">
+                            <canvas id="jobProgressChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Finance Expense Chart -->
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-base mb-4">Alokasi Pengeluaran</h3>
+                            <div class="h-56 relative flex items-center justify-center">
+                                <canvas id="financePieChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-3 border-t border-slate-100 text-xs text-center text-slate-500">
+                            Distribusi biaya berdasarkan kategori transaksi
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Summary / Activity Feed -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <h3 class="font-bold text-slate-800 text-base mb-3">Catatan Kendala & Isu Proyek Lapangan</h3>
+                    <div id="dashboard-issues-list" class="space-y-3 text-sm">
+                        <!-- Dynamic Issues -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 2: PEKERJAAN ================= -->
+            <section id="tab-jobs" class="tab-content hidden space-y-6">
+                <!-- Action Bar & Add Form Button -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
+                    <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                        <div class="relative w-full sm:w-64">
+                            <input type="text" id="job-search" oninput="renderJobs()" placeholder="Cari pekerjaan..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+                        </div>
+                        <select id="job-filter-category" onchange="renderJobs()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+                            <option value="ALL">Semua Kategori</option>
+                            <option value="Persiapan">Persiapan</option>
+                            <option value="Struktur">Struktur</option>
+                            <option value="Arsitektur">Arsitektur</option>
+                            <option value="MEP">MEP (Mekanikal/Elektrikal)</option>
+                            <option value="Finish">Pekerjaan Finishing</option>
+                        </select>
+                        <select id="job-filter-status" onchange="renderJobs()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+                            <option value="ALL">Semua Status</option>
+                            <option value="Belum Dimulai">Belum Dimulai</option>
+                            <option value="Dalam Proses">Dalam Proses</option>
+                            <option value="Tertunda">Tertunda</option>
+                            <option value="Selesai">Selesai</option>
+                        </select>
+                    </div>
+                    <button onclick="openJobModal()" class="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2 shadow-sm admin-only">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Tambah / Update Pekerjaan
+                    </button>
+                </div>
+
+                <!-- Table Jobs -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                    <th class="p-4">Foto / Dok</th>
+                                    <th class="p-4">Kategori</th>
+                                    <th class="p-4">Sub-Pekerjaan / Zona</th>
+                                    <th class="p-4">Penanggung Jawab</th>
+                                    <th class="p-4">Target Selesai</th>
+                                    <th class="p-4">Progress (%)</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4">Kendala / Catatan</th>
+                                    <th class="p-4 text-right admin-only">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="jobs-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- Data rendered via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 3: PEKERJA ================= -->
+            <section id="tab-workers" class="tab-content hidden space-y-6">
+                <!-- Action Bar -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
+                    <div class="text-sm text-slate-600">
+                        Total Absensi Upah Hari Ini: <span id="today-labor-cost" class="font-bold text-emerald-600">Rp 0</span>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto admin-only">
+                        <button onclick="toggleModal('modal-worker', true)" class="flex-1 sm:flex-none bg-slate-800 hover:bg-slate-900 text-white font-medium px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                            <i data-lucide="user-plus" class="w-4 h-4 text-amber-400"></i> Master Pekerja
+                        </button>
+                        <button onclick="toggleModal('modal-attendance', true)" class="flex-1 sm:flex-none bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i> Input Absensi
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Worker List Table -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 font-bold text-slate-800 flex justify-between items-center">
+                            <span>Daftar Master Tenaga Kerja</span>
+                            <span id="worker-count-tag" class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-md">0 Terdaftar</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
+                                        <th class="p-3">Nama</th>
+                                        <th class="p-3">Peran / Posisi</th>
+                                        <th class="p-3">Upah / Hari (Rp)</th>
+                                        <th class="p-3 text-right admin-only">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="workers-table-body" class="divide-y divide-slate-100 text-sm">
+                                    <!-- Render Workers -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Recent Attendance Log -->
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3">
+                        <h3 class="font-bold text-slate-800 text-base border-b border-slate-100 pb-2">Log Absensi Terbaru</h3>
+                        <div id="attendance-log-list" class="space-y-2 max-h-[400px] overflow-y-auto pr-1 text-sm">
+                            <!-- Rendered Log -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 4: KEUANGAN ================= -->
+            <section id="tab-finance" class="tab-content hidden space-y-6">
+                <!-- Financial Overview Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Total Target Budget</span>
+                        <div class="flex justify-between items-center mt-2">
+                            <h3 id="fin-total-budget" class="text-2xl font-bold text-slate-800">Rp 0</h3>
+                            <button onclick="editBudget()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-md admin-only">Ubah</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Total Pemasukan (Termyn)</span>
+                        <h3 id="fin-total-income" class="text-2xl font-bold text-blue-600 mt-2">Rp 0</h3>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Total Pengeluaran</span>
+                        <h3 id="fin-total-spent" class="text-2xl font-bold text-rose-600 mt-2">Rp 0</h3>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <span class="text-xs font-semibold text-slate-500 uppercase">Sisa Anggaran Proyek</span>
+                        <h3 id="fin-total-remaining" class="text-2xl font-bold text-emerald-600 mt-2">Rp 0</h3>
+                    </div>
+                </div>
+
+                <!-- Transaksi Action & Table -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="receipt" class="w-5 h-5 text-amber-500"></i>
+                        <h3 class="font-bold text-slate-800">Riwayat Transaksi Keuangan</h3>
+                    </div>
+                    <button onclick="toggleModal('modal-finance', true)" class="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2 admin-only">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i> Catat Transaksi Baru
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase">
+                                    <th class="p-4">Tanggal</th>
+                                    <th class="p-4">Tipe</th>
+                                    <th class="p-4">Kategori</th>
+                                    <th class="p-4">Keterangan / Item</th>
+                                    <th class="p-4">No. Ref/Nota</th>
+                                    <th class="p-4">Nominal (Rp)</th>
+                                    <th class="p-4 text-right admin-only">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="finance-table-body" class="divide-y divide-slate-100 text-sm">
+                                <!-- Finance items rendered -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 5: LAPORAN & REKAP ================= -->
+            <section id="tab-reports" class="tab-content hidden space-y-6">
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-slate-100 pb-4">
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-lg">Ringkasan Eksekutif Proyek</h3>
+                            <p class="text-sm text-slate-500">Laporan menyeluruh perkembangan proyek untuk Owner / Manajemen.</p>
+                        </div>
+                        <button onclick="openPrintModal()" class="bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm">
+                            <i data-lucide="printer" class="w-4 h-4 text-amber-400"></i> Cetak / Export PDF
+                        </button>
+                    </div>
+
+                    <!-- Ringkasan Teks -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                            <h4 class="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                                <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i> Status Pekerjaan Proyek
+                            </h4>
+                            <p id="report-jobs-summary" class="text-sm text-slate-600">Memuat data...</p>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                            <h4 class="font-semibold text-slate-800 text-sm flex items-center gap-2">
+                                <i data-lucide="dollar-sign" class="w-4 h-4 text-amber-600"></i> Ringkasan Keuangan Proyek
+                            </h4>
+                            <p id="report-finance-summary" class="text-sm text-slate-600">Memuat data...</p>
+                        </div>
+                    </div>
+
+                    <!-- Table Preview Laporan Pekerjaan -->
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-sm mb-3">Rekapitulasi Progres Sub-Pekerjaan</h4>
+                        <div class="border border-slate-200 rounded-xl overflow-hidden">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-100 text-xs font-semibold text-slate-600 border-b border-slate-200">
+                                    <tr>
+                                        <th class="p-3">Kategori</th>
+                                        <th class="p-3">Nama Pekerjaan</th>
+                                        <th class="p-3">PIC</th>
+                                        <th class="p-3">Progres (%)</th>
+                                        <th class="p-3">Status</th>
+                                        <th class="p-3">Catatan Lapangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="report-jobs-table" class="divide-y divide-slate-100">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ================= TAB 6: PENGATURAN ADMIN ================= -->
+            <section id="tab-admin" class="tab-content hidden space-y-6">
+                <!-- Lock Notice for Viewers -->
+                <div id="admin-view-lock-notice" class="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-amber-900 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <i data-lucide="shield-alert" class="w-6 h-6 text-amber-600"></i>
+                        <div>
+                            <h4 class="font-bold text-sm">Mode Read-Only Aktif</h4>
+                            <p class="text-xs text-amber-700">Anda sedang melihat informasi proyek. Silakan login sebagai Admin untuk mengubah pengaturan dan identitas proyek.</p>
+                        </div>
+                    </div>
+                    <button onclick="toggleAdminAuth()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg text-xs font-bold transition">
+                        Login Admin Sekarang
+                    </button>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                    <div class="border-b border-slate-100 pb-4">
+                        <h3 class="font-bold text-slate-800 text-lg">Pengaturan Informasi Proyek & Sistem</h3>
+                        <p class="text-sm text-slate-500">Kelola identitas proyek aktif, kontraktor, serta parameter upah.</p>
+                    </div>
+
+                    <form id="form-admin-settings" onsubmit="saveAdminSettings(event)" class="space-y-6">
+                        <!-- Identitas Proyek Aktif -->
+                        <div class="space-y-4">
+                            <h4 class="text-sm font-bold text-amber-600 uppercase tracking-wider flex items-center gap-2">
+                                <i data-lucide="building-2" class="w-4 h-4"></i> Identitas Proyek Aktif
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Proyek</label>
+                                    <input type="text" id="admin-proj-name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Lokasi / Alamat Proyek</label>
+                                    <input type="text" id="admin-proj-location" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Perusahaan / Kontraktor</label>
+                                    <input type="text" id="admin-proj-contractor" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Supervisor / Site Manager</label>
+                                    <input type="text" id="admin-proj-supervisor" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Parameter Penggajian & PIN Security -->
+                        <div class="space-y-4 pt-4 border-t border-slate-100">
+                            <h4 class="text-sm font-bold text-amber-600 uppercase tracking-wider flex items-center gap-2">
+                                <i data-lucide="calculator" class="w-4 h-4"></i> Parameter & Keamanan
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Faktor Multiplier Lembur</label>
+                                    <input type="number" step="0.1" id="admin-rate-overtime" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500">
+                                    <span class="text-[11px] text-slate-400">Default: 1.5</span>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Faktor Setengah Hari</label>
+                                    <input type="number" step="0.1" id="admin-rate-halfday" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500">
+                                    <span class="text-[11px] text-slate-400">Default: 0.5</span>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Ganti PIN Admin</label>
+                                    <input type="password" id="admin-pin-code" maxlength="8" placeholder="****" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none disabled:bg-slate-100 disabled:text-slate-500">
+                                    <span class="text-[11px] text-slate-400">Default: 1234</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-4 flex justify-end">
+                            <button type="submit" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-lg text-sm transition shadow-sm flex items-center gap-2 admin-only">
+                                <i data-lucide="save" class="w-4 h-4"></i> Simpan Pengaturan Admin
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Modal Login Admin PIN -->
+    <div id="modal-login-pin" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-900 text-white">
+                <h3 class="font-bold text-sm flex items-center gap-2"><i data-lucide="shield-check" class="w-4 h-4 text-amber-400"></i> Autentikasi Admin</h3>
+                <button onclick="toggleModal('modal-login-pin', false)" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form onsubmit="submitAdminPin(event)" class="p-6 space-y-4">
+                <div class="text-center">
+                    <div class="p-3 bg-amber-100 text-amber-600 rounded-full inline-block mb-2">
+                        <i data-lucide="key-round" class="w-6 h-6"></i>
+                    </div>
+                    <p class="text-xs text-slate-500">Masukkan PIN Keamanan Admin untuk membuka akses Tambah, Edit & Hapus Data.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1 text-center">PIN Admin</label>
+                    <input type="password" id="input-pin" required placeholder="Masukkan PIN (Default: 1234)" autofocus class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-center text-lg font-mono tracking-widest focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-xl text-sm transition shadow-md">
+                        Unlock Mode Admin
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Pekerjaan -->
+    <div id="modal-job" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 id="modal-job-title" class="font-bold text-slate-800">Form Laporan Harian Pekerjaan</h3>
+                <button onclick="toggleModal('modal-job', false)" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-job" onsubmit="saveJob(event)" class="p-6 space-y-4">
+                <input type="hidden" id="job-id">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kategori Pekerjaan</label>
+                        <select id="job-category" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                            <option value="Persiapan">Persiapan</option>
+                            <option value="Struktur">Struktur</option>
+                            <option value="Arsitektur">Arsitektur</option>
+                            <option value="MEP">MEP</option>
+                            <option value="Finish">Finish</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Penanggung Jawab (PIC)</label>
+                        <input type="text" id="job-pic" placeholder="Mandor Budi / Subkon A" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Sub-Pekerjaan / Zona</label>
+                    <input type="text" id="job-name" required placeholder="Contoh: Pengecoran Kolom Lt.2" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tanggal Mulai</label>
+                        <input type="date" id="job-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Target Selesai</label>
+                        <input type="date" id="job-target-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Deskripsi Detail Pekerjaan</label>
+                    <textarea id="job-desc" rows="2" placeholder="Rincian item pekerjaan..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">URL Foto Dok. Progress (Opsional)</label>
+                    <input type="url" id="job-image" placeholder="https://images.unsplash.com/photo-..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Progress (%)</label>
+                        <input type="number" id="job-progress" min="0" max="100" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Status</label>
+                        <select id="job-status" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                            <option value="Belum Dimulai">Belum Dimulai</option>
+                            <option value="Dalam Proses">Dalam Proses</option>
+                            <option value="Tertunda">Tertunda</option>
+                            <option value="Selesai">Selesai</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kendala / Catatan Lapangan</label>
+                    <input type="text" id="job-issues" placeholder="Contoh: Hujan deras 2 jam, material terlambat" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="toggleModal('modal-job', false)" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-sm">Simpan Data</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Proyek Baru -->
+    <div id="modal-project" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Buat Proyek Baru</h3>
+                <button onclick="toggleModal('modal-project', false)" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-project" onsubmit="saveNewProject(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Proyek</label>
+                    <input type="text" id="new-proj-name" required placeholder="Pembangunan Gudang Logistik B" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Lokasi Proyek</label>
+                    <input type="text" id="new-proj-location" required placeholder="Kawasan Industri Cikarang" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Target Budget Anggaran (Rp)</label>
+                    <input type="number" id="new-proj-budget" required placeholder="750000000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="toggleModal('modal-project', false)" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-sm">Buat Proyek</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Reset Data -->
+    <div id="modal-reset" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-rose-50">
+                <h3 class="font-bold text-rose-800 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-5 h-5"></i> Konfirmasi Reset Data</h3>
+                <button onclick="toggleModal('modal-reset', false)" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Pilih cakupan data yang ingin Anda hapus/reset. Tindakan ini tidak dapat dibatalkan.
+                </p>
+
+                <div class="space-y-2">
+                    <button onclick="executeReset('current_jobs')" class="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-xs flex justify-between items-center transition">
+                        <div>
+                            <div class="font-bold text-slate-800">Reset Sub-Pekerjaan Sahaja</div>
+                            <div class="text-slate-500">Hanya menghapus daftar pekerjaan proyek aktif ini</div>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                    </button>
+
+                    <button onclick="executeReset('current_finance')" class="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-xs flex justify-between items-center transition">
+                        <div>
+                            <div class="font-bold text-slate-800">Reset Keuangan Proyek</div>
+                            <div class="text-slate-500">Menghapus riwayat transaksi proyek aktif ini</div>
+                        </div>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+                    </button>
+
+                    <button onclick="executeReset('all_factory')" class="w-full text-left p-3 rounded-lg border border-rose-300 bg-rose-50 hover:bg-rose-100 text-xs flex justify-between items-center transition">
+                        <div>
+                            <div class="font-bold text-rose-900">Reset Total (Factory Reset)</div>
+                            <div class="text-rose-700">Kembalikan seluruh aplikasi & proyek ke data demo awal</div>
+                        </div>
+                        <i data-lucide="rotate-ccw" class="w-4 h-4 text-rose-600"></i>
+                    </button>
+                </div>
+
+                <div class="pt-2 flex justify-end">
+                    <button type="button" onclick="toggleModal('modal-reset', false)" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50">Batal</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Master Pekerja -->
+    <div id="modal-worker" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Tambah Data Pekerja Baru</h3>
+                <button onclick="toggleModal('modal-worker', false)" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-worker" onsubmit="saveWorker(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nama Lengkap</label>
+                    <input type="text" id="worker-name" required placeholder="Sugianto" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Peran / Keahlian</label>
+                    <select id="worker-role" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                        <option value="Mandor">Mandor</option>
+                        <option value="Tukang Batu/Besi">Tukang Batu/Besi</option>
+                        <option value="Tukang Kayu">Tukang Kayu</option>
+                        <option value="Tukang Cat/Finishing">Tukang Cat/Finishing</option>
+                        <option value="Kuli / Pekerja Harian">Kuli / Pekerja Harian</option>
+                        <option value="Operator Alat">Operator Alat</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Upah Harian Standard (Rp)</label>
+                    <input type="number" id="worker-rate" required placeholder="150000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="toggleModal('modal-worker', false)" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-sm">Simpan Pekerja</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Input Absensi -->
+    <div id="modal-attendance" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Catat Absensi Pekerja</h3>
+                <button onclick="toggleModal('modal-attendance', false)" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-attendance" onsubmit="saveAttendance(event)" class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tanggal Absen</label>
+                    <input type="date" id="att-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Pilih Pekerja</label>
+                    <select id="att-worker-id" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Status Kehadiran</label>
+                    <select id="att-status" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                        <option value="Hadir Full">Hadir Full (100% Upah)</option>
+                        <option value="Hadir Setengah Hari">Hadir Setengah Hari</option>
+                        <option value="Lembur">Hadir + Lembur</option>
+                        <option value="Sakit/Izin">Sakit / Izin (0%)</option>
+                        <option value="Alpa">Alpa / Tanpa Keterangan (0%)</option>
+                    </select>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="toggleModal('modal-attendance', false)" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-sm">Proses Absen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Keuangan -->
+    <div id="modal-finance" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="font-bold text-slate-800">Pencatatan Transaksi Keuangan</h3>
+                <button onclick="toggleModal('modal-finance', false)" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            <form id="form-finance" onsubmit="saveFinance(event)" class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Jenis Transaksi</label>
+                        <select id="fin-type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                            <option value="Pengeluaran">Pengeluaran</option>
+                            <option value="Pemasukan">Pemasukan (Termyn/DP)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Tanggal Transaksi</label>
+                        <input type="date" id="fin-date" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Kategori</label>
+                    <select id="fin-category" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none bg-white">
+                        <option value="Material">Material / Bahan Bangunan</option>
+                        <option value="Upah Pekerja">Upah Pekerja & Kasbon</option>
+                        <option value="Sewa Alat">Sewa Alat & Mesin</option>
+                        <option value="Operasional">Operasional & Konsumsi</option>
+                        <option value="Termyn Owner">Pencairan Termyn / Uang Muka</option>
+                        <option value="Lain-lain">Lain-lain</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Rincian Item / Uraian</label>
+                    <input type="text" id="fin-desc" required placeholder="Pembelian Semen 50 Sak" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Nominal Biaya (Rp)</label>
+                        <input type="number" id="fin-amount" required placeholder="3250000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">No. Nota / Ref</label>
+                        <input type="text" id="fin-ref" placeholder="INV-8821" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                    </div>
+                </div>
+                <div class="pt-2 flex justify-end gap-2">
+                    <button type="button" onclick="toggleModal('modal-finance', false)" class="px-4 py-2 border border-slate-300 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold rounded-lg text-sm">Simpan Transaksi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Print / Export Modal Preview -->
+    <div id="modal-print-preview" class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden my-8">
+            <div class="p-4 bg-slate-900 text-white flex justify-between items-center no-print">
+                <span class="font-bold text-sm flex items-center gap-2"><i data-lucide="eye" class="w-4 h-4 text-amber-400"></i> Preview Cetak Laporan Proyek</span>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1">
+                        <i data-lucide="printer" class="w-4 h-4"></i> Cetak / Save PDF
+                    </button>
+                    <button onclick="toggleModal('modal-print-preview', false)" class="bg-slate-800 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs">Tutup</button>
+                </div>
+            </div>
+
+            <!-- Printable Layout Content -->
+            <div id="print-area" class="p-8 space-y-6 text-slate-800 bg-white">
+                <!-- Kop Laporan -->
+                <div class="border-b-2 border-slate-800 pb-4 flex justify-between items-start">
+                    <div>
+                        <h1 class="text-2xl font-bold uppercase tracking-wide text-slate-900">Laporan Progres & Keuangan Proyek</h1>
+                        <p id="print-proj-info" class="text-sm font-semibold text-amber-600">Proyek Pembangunan --</p>
+                        <p id="print-proj-contractor" class="text-xs text-slate-600">Kontraktor: -- | Supervisor: --</p>
+                        <p class="text-xs text-slate-400 mt-1">Dicetak pada: <span id="print-timestamp">--</span></p>
+                    </div>
+                    <div class="text-right">
+                        <span class="inline-block p-2 bg-slate-900 text-amber-400 font-bold rounded-lg text-xs">PROKONSTRUCT SITE REPORT</span>
+                    </div>
+                </div>
+
+                <!-- Executive Summary Cards Print -->
+                <div class="grid grid-cols-4 gap-4 text-center">
+                    <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                        <div class="text-xs text-slate-500">Total Progress</div>
+                        <div id="print-stat-progress" class="text-xl font-bold text-slate-800">0%</div>
+                    </div>
+                    <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                        <div class="text-xs text-slate-500">Pekerja Aktif</div>
+                        <div id="print-stat-workers" class="text-xl font-bold text-slate-800">0</div>
+                    </div>
+                    <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                        <div class="text-xs text-slate-500">Total Pengeluaran</div>
+                        <div id="print-stat-spent" class="text-xl font-bold text-slate-800">Rp 0</div>
+                    </div>
+                    <div class="p-3 border border-slate-200 rounded-lg bg-slate-50">
+                        <div class="text-xs text-slate-500">Sisa Anggaran</div>
+                        <div id="print-stat-remaining" class="text-xl font-bold text-slate-800">Rp 0</div>
+                    </div>
+                </div>
+
+                <!-- Progress Table -->
+                <div>
+                    <h3 class="font-bold text-sm text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">1. Status Progress Pekerjaan</h3>
+                    <table class="w-full text-xs text-left border border-slate-300 border-collapse">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="p-2 border border-slate-300">Kategori</th>
+                                <th class="p-2 border border-slate-300">Sub Pekerjaan</th>
+                                <th class="p-2 border border-slate-300">PIC</th>
+                                <th class="p-2 border border-slate-300">Target</th>
+                                <th class="p-2 border border-slate-300">Progress</th>
+                                <th class="p-2 border border-slate-300">Status</th>
+                                <th class="p-2 border border-slate-300">Catatan Lapangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="print-jobs-body">
+                            <!-- Rendered JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Finance Summary Table -->
+                <div>
+                    <h3 class="font-bold text-sm text-slate-800 uppercase border-b border-slate-200 pb-1 mb-2">2. Transaksi Keuangan Terakhir</h3>
+                    <table class="w-full text-xs text-left border border-slate-300 border-collapse">
+                        <thead class="bg-slate-100">
+                            <tr>
+                                <th class="p-2 border border-slate-300">Tanggal</th>
+                                <th class="p-2 border border-slate-300">Tipe</th>
+                                <th class="p-2 border border-slate-300">Kategori</th>
+                                <th class="p-2 border border-slate-300">Item / Deskripsi</th>
+                                <th class="p-2 border border-slate-300 text-right">Nominal (Rp)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="print-finance-body">
+                            <!-- Rendered JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Signatures -->
+                <div class="pt-8 grid grid-cols-2 gap-8 text-center text-xs">
+                    <div>
+                        <p class="text-slate-500">Dibuat Oleh,</p>
+                        <div class="h-16"></div>
+                        <p id="print-sig-supervisor" class="font-bold text-slate-800 border-t border-slate-400 inline-block px-8 pt-1">( Supervisor Proyek )</p>
+                    </div>
+                    <div>
+                        <p class="text-slate-500">Disetujui Oleh,</p>
+                        <div class="h-16"></div>
+                        <p class="font-bold text-slate-800 border-t border-slate-400 inline-block px-8 pt-1">( Project Manager / Owner )</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        // Multi-Project Initial Demo Structure
+        const defaultMultiProjectState = {
+            activeProjectId: "proj-1",
+            isAdmin: false, // Default Role State: Viewer Mode
+            settings: {
+                overtimeRate: 1.5,
+                halfDayRate: 0.5,
+                adminPin: "1234" // Default PIN Admin
+            },
+            projects: [
+                {
+                    id: "proj-1",
+                    name: "Pembangunan Rumah Tinggal 2 Lantai",
+                    location: "Jl. Merdeka No. 45, Jakarta",
+                    contractor: "PT. Jaya Karya Utama",
+                    supervisor: "Ir. Hendra Wijaya",
+                    budget: 500000000,
+                    jobs: [
+                        {
+                            id: 101,
+                            category: "Persiapan",
+                            pic: "Mandor Budi",
+                            date: "2026-10-01",
+                            targetDate: "2026-10-10",
+                            name: "Pembersihan Lahan & Pengukuran (Bouwplank)",
+                            desc: "Pembersihan area tapak dan pembuatan profil elevasi",
+                            image: "",
+                            progress: 100,
+                            status: "Selesai",
+                            issues: "-"
+                        },
+                        {
+                            id: 102,
+                            category: "Struktur",
+                            pic: "Mandor Budi",
+                            date: "2026-10-11",
+                            targetDate: "2026-10-25",
+                            name: "Galian & Fondasi Cakar Ayam",
+                            desc: "Galian tanah kedalaman 1.2m dan pembesian fondasi",
+                            image: "",
+                            progress: 75,
+                            status: "Dalam Proses",
+                            issues: "Terkendala genangan air hujan di area timur"
+                        }
+                    ],
+                    workers: [
+                        { id: 1, name: "Budi Santoso", role: "Mandor", rate: 200000 },
+                        { id: 2, name: "Joko Susilo", role: "Tukang Batu/Besi", rate: 160000 },
+                        { id: 3, name: "Slamet", role: "Kuli / Pekerja Harian", rate: 120000 }
+                    ],
+                    attendance: [
+                        { id: 1001, date: "2026-10-28", workerId: 1, status: "Hadir Full", pay: 200000 },
+                        { id: 1002, date: "2026-10-28", workerId: 2, status: "Lembur", pay: 240000 }
+                    ],
+                    finance: [
+                        { id: 2001, type: "Pemasukan", date: "2026-10-01", category: "Termyn Owner", desc: "Uang Muka / DP Proyek (30%)", ref: "TRM-01", amount: 150000000 },
+                        { id: 2002, type: "Pengeluaran", date: "2026-10-05", category: "Material", desc: "Semen 100 Sak & Pasir 2 CPO", ref: "INV-102", amount: 12500000 }
+                    ]
+                }
+            ]
+        };
+
+        // Persistent State
+        let appData = loadState();
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('PROKONSTRUCT_MULTI_V2');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (parsed && parsed.projects && parsed.projects.length > 0) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {
+                console.error("Gagal memuat data dari localStorage", e);
+            }
+            return JSON.parse(JSON.stringify(defaultMultiProjectState));
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('PROKONSTRUCT_MULTI_V2', JSON.stringify(appData));
+            } catch (e) {
+                console.error("Gagal menyimpan ke localStorage", e);
+                showToast("Gagal menyimpan data ke memori lokal!", "error");
+            }
+            renderAll();
+        }
+
+        // ================= ROLE BASED ACCESS CONTROL (RBAC) =================
+        function isAdminLoggedIn() {
+            return !!appData.isAdmin;
+        }
+
+        // ================= MODAL & HELPER FUNCTIONS =================
+        function toggleModal(modalId, show = true) {
+            const modal = document.getElementById(modalId);
+            if (!modal) return;
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        function openNewProjectModal() {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Anda harus Login Admin untuk membuat proyek baru.");
+                return;
+            }
+            document.getElementById('form-project')?.reset();
+            toggleModal('modal-project', true);
+        }
+
+        function openResetModal() {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Anda harus Login Admin untuk mereset data.");
+                return;
+            }
+            toggleModal('modal-reset', true);
+        }
+
+        function openJobModal() {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Anda harus Login Admin untuk mengelola pekerjaan.");
+                return;
+            }
+            document.getElementById('form-job')?.reset();
+            document.getElementById('job-id').value = '';
+            document.getElementById('modal-job-title').innerText = 'Tambah Pekerjaan Baru';
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('job-date').value = todayStr;
+            toggleModal('modal-job', true);
+        }
+
+        function editJob(id) {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Anda harus Login Admin untuk mengedit pekerjaan.");
+                return;
+            }
+            const activeProj = getActiveProject();
+            if (!activeProj) return;
+            const job = activeProj.jobs.find(j => j.id === id);
+            if (!job) return;
+
+            document.getElementById('job-id').value = job.id;
+            document.getElementById('job-category').value = job.category || 'Persiapan';
+            document.getElementById('job-pic').value = job.pic || '';
+            document.getElementById('job-date').value = job.date || '';
+            document.getElementById('job-target-date').value = job.targetDate || '';
+            document.getElementById('job-name').value = job.name || '';
+            document.getElementById('job-desc').value = job.desc || '';
+            document.getElementById('job-image').value = job.image || '';
+            document.getElementById('job-progress').value = job.progress || 0;
+            document.getElementById('job-status').value = job.status || 'Belum Dimulai';
+            document.getElementById('job-issues').value = job.issues || '';
+
+            document.getElementById('modal-job-title').innerText = 'Edit Pekerjaan';
+            toggleModal('modal-job', true);
+        }
+
+        function getActiveProject() {
+            if (!appData.projects || appData.projects.length === 0) return null;
+            return appData.projects.find(p => p.id === appData.activeProjectId) || appData.projects[0];
+        }
+
+        function changeProject(projectId) {
+            appData.activeProjectId = projectId;
+            saveState();
+        }
+
+        function saveNewProject(e) {
+            e.preventDefault();
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Hanya Admin yang dapat membuat proyek baru.");
+                return;
+            }
+
+            const name = document.getElementById('new-proj-name').value;
+            const location = document.getElementById('new-proj-location').value;
+            const budget = Number(document.getElementById('new-proj-budget').value);
+
+            const newProj = {
+                id: 'proj-' + Date.now(),
+                name: name,
+                location: location,
+                contractor: 'PT. Konstruksi Utama',
+                supervisor: 'Mandor Lapangan',
+                budget: budget,
+                jobs: [],
+                workers: [],
+                attendance: [],
+                finance: []
+            };
+
+            appData.projects.push(newProj);
+            appData.activeProjectId = newProj.id;
+
+            toggleModal('modal-project', false);
+            saveState();
+            renderProjectSelector();
+            showToast(`Proyek "${name}" berhasil dibuat!`);
+        }
+
+        function renderProjectSelector() {
+            const selector = document.getElementById('project-selector');
+            const infoMini = document.getElementById('project-info-mini');
+            if (!selector) return;
+
+            selector.innerHTML = '';
+            appData.projects.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.innerText = p.name;
+                if (p.id === appData.activeProjectId) opt.selected = true;
+                selector.appendChild(opt);
+            });
+
+            const active = getActiveProject();
+            if (active && infoMini) {
+                infoMini.innerText = `${active.location || 'Lokasi -'} • ${formatRp(active.budget)}`;
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.remove('hidden');
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors";
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = "nav-btn w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors bg-amber-500 text-slate-950 shadow-md";
+            }
+
+            if (tabId === 'admin') {
+                populateAdminForm();
+            }
+
+            const titles = {
+                'dashboard': 'Dashboard Proyek',
+                'jobs': 'Manajemen Pekerjaan & Progres',
+                'workers': 'Data Pekerja & Absensi',
+                'finance': 'Keuangan & Budget Proyek',
+                'reports': 'Rekap & Laporan Cetak',
+                'admin': 'Pengaturan Admin & Sistem'
+            };
+            document.getElementById('page-title').innerText = titles[tabId] || 'Dashboard Proyek';
+        }
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            if (!toast || !toastMsg) return;
+
+            toastMsg.innerText = msg;
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3000);
+        }
+
+        function formatRp(num) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num || 0);
+        }
+
+        function renderAttendanceLog() {
+            const activeProj = getActiveProject();
+            const logContainer = document.getElementById('attendance-log-list');
+            const attWorkerSelect = document.getElementById('att-worker-id');
+            if (!logContainer || !activeProj) return;
+
+            if (attWorkerSelect) {
+                attWorkerSelect.innerHTML = '<option value="">-- Pilih Pekerja --</option>';
+                activeProj.workers.forEach(w => {
+                    attWorkerSelect.innerHTML += `<option value="${w.id}">${w.name} (${w.role})</option>`;
+                });
+            }
+
+            logContainer.innerHTML = '';
+            if (activeProj.attendance.length === 0) {
+                logContainer.innerHTML = `<p class="text-xs text-slate-400 italic">Belum ada catatan absensi.</p>`;
+                return;
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            let todayCost = 0;
+
+            activeProj.attendance.forEach(att => {
+                const worker = activeProj.workers.find(w => w.id === att.workerId);
+                const workerName = worker ? worker.name : 'Pekerja Non-Aktif';
+                if (att.date === todayStr) todayCost += Number(att.pay || 0);
+
+                logContainer.innerHTML += `
+                    <div class="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center text-xs">
+                        <div>
+                            <span class="font-bold text-slate-800">${workerName}</span>
+                            <span class="text-slate-400 block">${att.date} • ${att.status}</span>
+                        </div>
+                        <span class="font-mono font-bold text-slate-700">${formatRp(att.pay)}</span>
+                    </div>
+                `;
+            });
+
+            const todayLaborCostEl = document.getElementById('today-labor-cost');
+            if (todayLaborCostEl) todayLaborCostEl.innerText = formatRp(todayCost);
+        }
+
+        function renderReports() {
+            const activeProj = getActiveProject();
+            if (!activeProj) return;
+
+            const totalJobs = activeProj.jobs.length;
+            const avgProgress = totalJobs > 0 ? Math.round(activeProj.jobs.reduce((acc, j) => acc + Number(j.progress || 0), 0) / totalJobs) : 0;
+            const completedJobs = activeProj.jobs.filter(j => j.status === 'Selesai').length;
+
+            const reportJobsSummary = document.getElementById('report-jobs-summary');
+            if (reportJobsSummary) {
+                reportJobsSummary.innerText = `Total sub-pekerjaan: ${totalJobs} item. ${completedJobs} selesai. Rata-rata capaian progres keseluruhan proyek adalah ${avgProgress}%.`;
+            }
+
+            const totalSpent = activeProj.finance
+                .filter(f => f.type === 'Pengeluaran' || !f.type)
+                .reduce((acc, f) => acc + Number(f.amount || 0), 0);
+            const remaining = activeProj.budget - totalSpent;
+
+            const reportFinSummary = document.getElementById('report-finance-summary');
+            if (reportFinSummary) {
+                reportFinSummary.innerText = `Total anggaran: ${formatRp(activeProj.budget)}. Total realisasi pengeluaran: ${formatRp(totalSpent)}. Sisa saldo anggaran: ${formatRp(remaining)}.`;
+            }
+
+            const reportJobsTable = document.getElementById('report-jobs-table');
+            if (reportJobsTable) {
+                reportJobsTable.innerHTML = '';
+                if (activeProj.jobs.length === 0) {
+                    reportJobsTable.innerHTML = `<tr><td colspan="6" class="p-3 text-center text-slate-400">Belum ada item pekerjaan.</td></tr>`;
+                } else {
+                    activeProj.jobs.forEach(j => {
+                        reportJobsTable.innerHTML += `
+                            <tr>
+                                <td class="p-3">${j.category || '-'}</td>
+                                <td class="p-3 font-semibold">${j.name}</td>
+                                <td class="p-3">${j.pic || '-'}</td>
+                                <td class="p-3 font-bold">${j.progress}%</td>
+                                <td class="p-3">${j.status}</td>
+                                <td class="p-3 text-slate-500">${j.issues || '-'}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            }
+        }
+
+        function openPrintModal() {
+            const activeProj = getActiveProject();
+            if (!activeProj) return;
+
+            document.getElementById('print-proj-info').innerText = `Proyek: ${activeProj.name || '-'} (${activeProj.location || '-'})`;
+            document.getElementById('print-proj-contractor').innerText = `Kontraktor: ${activeProj.contractor || '-'} | Supervisor: ${activeProj.supervisor || '-'}`;
+            document.getElementById('print-timestamp').innerText = new Date().toLocaleString('id-ID');
+
+            const totalJobs = activeProj.jobs.length;
+            const avgProgress = totalJobs > 0 ? Math.round(activeProj.jobs.reduce((acc, j) => acc + Number(j.progress || 0), 0) / totalJobs) : 0;
+            const totalSpent = activeProj.finance
+                .filter(f => f.type === 'Pengeluaran' || !f.type)
+                .reduce((acc, f) => acc + Number(f.amount || 0), 0);
+
+            document.getElementById('print-stat-progress').innerText = `${avgProgress}%`;
+            document.getElementById('print-stat-workers').innerText = `${activeProj.workers.length} Orang`;
+            document.getElementById('print-stat-spent').innerText = formatRp(totalSpent);
+            document.getElementById('print-stat-remaining').innerText = formatRp(activeProj.budget - totalSpent);
+
+            const printJobsBody = document.getElementById('print-jobs-body');
+            if (printJobsBody) {
+                printJobsBody.innerHTML = '';
+                activeProj.jobs.forEach(j => {
+                    printJobsBody.innerHTML += `
+                        <tr>
+                            <td class="p-2 border border-slate-300">${j.category || '-'}</td>
+                            <td class="p-2 border border-slate-300 font-bold">${j.name}</td>
+                            <td class="p-2 border border-slate-300">${j.pic || '-'}</td>
+                            <td class="p-2 border border-slate-300">${j.targetDate || '-'}</td>
+                            <td class="p-2 border border-slate-300 font-bold">${j.progress}%</td>
+                            <td class="p-2 border border-slate-300">${j.status}</td>
+                            <td class="p-2 border border-slate-300">${j.issues || '-'}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const printFinanceBody = document.getElementById('print-finance-body');
+            if (printFinanceBody) {
+                printFinanceBody.innerHTML = '';
+                activeProj.finance.slice(0, 10).forEach(f => {
+                    printFinanceBody.innerHTML += `
+                        <tr>
+                            <td class="p-2 border border-slate-300">${f.date}</td>
+                            <td class="p-2 border border-slate-300">${f.type || 'Pengeluaran'}</td>
+                            <td class="p-2 border border-slate-300">${f.category}</td>
+                            <td class="p-2 border border-slate-300">${f.desc}</td>
+                            <td class="p-2 border border-slate-300 text-right font-mono">${formatRp(f.amount)}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            document.getElementById('print-sig-supervisor').innerText = `( ${activeProj.supervisor || 'Supervisor Proyek'} )`;
+            toggleModal('modal-print-preview', true);
+        }
+
+        // Variable instances for Chart.js
+        let progressChartInstance = null;
+        let pieChartInstance = null;
+
+        // Initialization on window load
+        window.onload = function() {
+            renderProjectSelector();
+            renderAll();
+            const liveDateEl = document.getElementById('live-date');
+            if (liveDateEl) {
+                liveDateEl.innerText = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            }
+        };
+
+        function toggleAdminAuth() {
+            if (isAdminLoggedIn()) {
+                appData.isAdmin = false;
+                saveState();
+                showToast("Berhasil Logout. Kembali ke Mode Viewer (Read-Only).");
+            } else {
+                document.getElementById('input-pin').value = '';
+                toggleModal('modal-login-pin', true);
+            }
+        }
+
+        function submitAdminPin(e) {
+            e.preventDefault();
+            const inputPin = document.getElementById('input-pin').value;
+            const currentPin = appData.settings?.adminPin || "1234";
+
+            if (inputPin === currentPin) {
+                appData.isAdmin = true;
+                toggleModal('modal-login-pin', false);
+                saveState();
+                showToast("Akses Admin Berhasil Diberikan!", "success");
+            } else {
+                alert("PIN Admin Salah! (Default PIN: 1234)");
+            }
+        }
+
+        function updateRoleUI() {
+            const isAdmin = isAdminLoggedIn();
+            const roleBadge = document.getElementById('role-badge');
+            const authText = document.getElementById('admin-auth-text');
+            const lockNotice = document.getElementById('admin-view-lock-notice');
+
+            if (isAdmin) {
+                roleBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1";
+                roleBadge.innerHTML = `<i data-lucide="shield-check" class="w-3.5 h-3.5 text-amber-600"></i> Admin Access`;
+                authText.innerText = "Logout Admin";
+
+                if (lockNotice) lockNotice.classList.add('hidden');
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('hidden'));
+                
+                // Enable inputs in admin settings
+                document.querySelectorAll('#form-admin-settings input').forEach(inp => inp.removeAttribute('disabled'));
+            } else {
+                roleBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200 flex items-center gap-1";
+                roleBadge.innerHTML = `<i data-lucide="eye" class="w-3.5 h-3.5 text-slate-500"></i> Mode Viewer`;
+                authText.innerText = "Login Admin";
+
+                if (lockNotice) lockNotice.classList.remove('hidden');
+                document.querySelectorAll('.admin-only').forEach(el => el.classList.add('hidden'));
+
+                // Disable inputs in admin settings for viewers
+                document.querySelectorAll('#form-admin-settings input').forEach(inp => inp.setAttribute('disabled', 'true'));
+            }
+            lucide.createIcons();
+        }
+
+        // ================= ADMIN SETTINGS =================
+        function populateAdminForm() {
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            document.getElementById('admin-proj-name').value = activeProj.name || '';
+            document.getElementById('admin-proj-location').value = activeProj.location || '';
+            document.getElementById('admin-proj-contractor').value = activeProj.contractor || '';
+            document.getElementById('admin-proj-supervisor').value = activeProj.supervisor || '';
+
+            document.getElementById('admin-rate-overtime').value = appData.settings?.overtimeRate || 1.5;
+            document.getElementById('admin-rate-halfday').value = appData.settings?.halfDayRate || 0.5;
+            document.getElementById('admin-pin-code').value = appData.settings?.adminPin || '1234';
+        }
+
+        function saveAdminSettings(e) {
+            e.preventDefault();
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Hanya Admin yang dapat menyimpan pengaturan.");
+                return;
+            }
+
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            activeProj.name = document.getElementById('admin-proj-name').value;
+            activeProj.location = document.getElementById('admin-proj-location').value;
+            activeProj.contractor = document.getElementById('admin-proj-contractor').value;
+            activeProj.supervisor = document.getElementById('admin-proj-supervisor').value;
+
+            if(!appData.settings) appData.settings = {};
+            appData.settings.overtimeRate = Number(document.getElementById('admin-rate-overtime').value) || 1.5;
+            appData.settings.halfDayRate = Number(document.getElementById('admin-rate-halfday').value) || 0.5;
+            
+            const newPin = document.getElementById('admin-pin-code').value.trim();
+            if (newPin) {
+                appData.settings.adminPin = newPin;
+            }
+
+            saveState();
+            renderProjectSelector();
+            showToast("Pengaturan admin & identitas proyek berhasil disimpan!");
+        }
+
+        function executeReset(type) {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Hanya Admin yang dapat mereset data.");
+                return;
+            }
+            const activeProj = getActiveProject();
+            if(type === 'current_jobs') {
+                if(activeProj) activeProj.jobs = [];
+                showToast("Daftar pekerjaan proyek ini telah di-reset.");
+            } else if(type === 'current_finance') {
+                if(activeProj) activeProj.finance = [];
+                showToast("Data keuangan proyek ini telah di-reset.");
+            } else if(type === 'all_factory') {
+                appData = JSON.parse(JSON.stringify(defaultMultiProjectState));
+                showToast("Aplikasi berhasil dikembalikan ke data awal (Factory Reset)!");
+            }
+
+            toggleModal('modal-reset', false);
+            saveState();
+            renderProjectSelector();
+        }
+
+        // ================= RENDER ALL COMPONENTS =================
+        function renderAll() {
+            updateRoleUI();
+            renderDashboardStats();
+            renderJobs();
+            renderWorkers();
+            renderAttendanceLog();
+            renderFinance();
+            renderReports();
+            renderCharts();
+        }
+
+        // ================= 1. DASHBOARD LOGIC =================
+        function renderDashboardStats() {
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            const totalJobs = activeProj.jobs.length;
+            const avgProgress = totalJobs > 0 
+                ? Math.round(activeProj.jobs.reduce((acc, item) => acc + Number(item.progress || 0), 0) / totalJobs) 
+                : 0;
+            
+            const completedJobs = activeProj.jobs.filter(j => j.status === 'Selesai').length;
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const activeWorkersToday = activeProj.attendance.filter(a => a.date === todayStr && !['Sakit/Izin', 'Alpa'].includes(a.status)).length;
+
+            const totalSpent = activeProj.finance
+                .filter(f => f.type === 'Pengeluaran' || !f.type)
+                .reduce((acc, f) => acc + Number(f.amount || 0), 0);
+
+            const remainingBudget = activeProj.budget - totalSpent;
+
+            document.getElementById('stat-progress').innerText = `${avgProgress}%`;
+            document.getElementById('stat-workers').innerText = `${activeWorkersToday} Orang`;
+            document.getElementById('stat-total-workers-registered').innerText = activeProj.workers.length;
+            document.getElementById('stat-expenses').innerText = formatRp(totalSpent);
+            document.getElementById('stat-remaining-budget').innerText = formatRp(remainingBudget);
+            document.getElementById('stat-jobs-count').innerText = `${completedJobs} / ${totalJobs}`;
+
+            const issuesContainer = document.getElementById('dashboard-issues-list');
+            issuesContainer.innerHTML = '';
+            const pendingIssues = activeProj.jobs.filter(j => j.issues && j.issues !== '-' && j.status !== 'Selesai');
+            
+            if(pendingIssues.length === 0) {
+                issuesContainer.innerHTML = `<p class="text-xs text-slate-400 italic">Tidak ada kendala kritis pada pekerjaan yang sedang berjalan.</p>`;
+            } else {
+                pendingIssues.forEach(item => {
+                    issuesContainer.innerHTML += `
+                        <div class="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-3">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+                            <div>
+                                <h5 class="font-bold text-slate-800 text-xs">${item.name} (${item.category || 'Umum'})</h5>
+                                <p class="text-xs text-slate-600 mt-0.5">${item.issues}</p>
+                            </div>
+                        </div>
+                    `;
+                });
+                lucide.createIcons();
+            }
+        }
+
+        // ================= 2. CHARTS =================
+        function renderCharts() {
+            try {
+                const activeProj = getActiveProject();
+                if(!activeProj) return;
+
+                const canvasProgress = document.getElementById('jobProgressChart');
+                if (canvasProgress) {
+                    const ctxProgress = canvasProgress.getContext('2d');
+                    const jobLabels = activeProj.jobs.map(j => j.name.length > 18 ? j.name.substring(0, 18) + '...' : j.name);
+                    const jobData = activeProj.jobs.map(j => j.progress);
+
+                    if (progressChartInstance) progressChartInstance.destroy();
+
+                    progressChartInstance = new Chart(ctxProgress, {
+                        type: 'bar',
+                        data: {
+                            labels: jobLabels.length ? jobLabels : ['Belum ada data'],
+                            datasets: [{
+                                label: 'Progres Pekerjaan (%)',
+                                data: jobData.length ? jobData : [0],
+                                backgroundColor: '#f59e0b',
+                                borderRadius: 6,
+                                hoverBackgroundColor: '#d97706'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: { y: { beginAtZero: true, max: 100 } },
+                            plugins: { legend: { display: false } }
+                        }
+                    });
+                }
+
+                const canvasPie = document.getElementById('financePieChart');
+                if (canvasPie) {
+                    const ctxPie = canvasPie.getContext('2d');
+                    const categories = ['Material', 'Upah Pekerja', 'Sewa Alat', 'Operasional', 'Lain-lain'];
+                    const categoryTotals = categories.map(cat => {
+                        return activeProj.finance
+                            .filter(f => (f.type === 'Pengeluaran' || !f.type) && f.category === cat)
+                            .reduce((acc, f) => acc + Number(f.amount || 0), 0);
+                    });
+
+                    if (pieChartInstance) pieChartInstance.destroy();
+
+                    pieChartInstance = new Chart(ctxPie, {
+                        type: 'doughnut',
+                        data: {
+                            labels: categories,
+                            datasets: [{
+                                data: categoryTotals,
+                                backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                            }
+                        }
+                    });
+                }
+            } catch(e) {
+                console.error("Gagal merender grafik Chart.js:", e);
+            }
+        }
+
+        // ================= 3. PEKERJAAN =================
+        function renderJobs() {
+            const activeProj = getActiveProject();
+            const tbody = document.getElementById('jobs-table-body');
+            if(!tbody || !activeProj) return;
+
+            const searchQuery = (document.getElementById('job-search')?.value || '').toLowerCase();
+            const filterCategory = document.getElementById('job-filter-category')?.value || 'ALL';
+            const filterStatus = document.getElementById('job-filter-status')?.value || 'ALL';
+            const isAdmin = isAdminLoggedIn();
+
+            tbody.innerHTML = '';
+
+            const filteredJobs = activeProj.jobs.filter(job => {
+                const matchesSearch = job.name.toLowerCase().includes(searchQuery) || (job.desc && job.desc.toLowerCase().includes(searchQuery));
+                const matchesCategory = filterCategory === 'ALL' || job.category === filterCategory;
+                const matchesStatus = filterStatus === 'ALL' || job.status === filterStatus;
+                return matchesSearch && matchesCategory && matchesStatus;
+            });
+
+            if(filteredJobs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${isAdmin ? '9' : '8'}" class="p-4 text-center text-slate-400">Tidak ada data pekerjaan ditemukan.</td></tr>`;
+                return;
+            }
+
+            filteredJobs.forEach(job => {
+                let badgeColor = "bg-slate-100 text-slate-700";
+                if (job.status === 'Selesai') badgeColor = "bg-emerald-100 text-emerald-800";
+                if (job.status === 'Dalam Proses') badgeColor = "bg-amber-100 text-amber-800";
+                if (job.status === 'Tertunda') badgeColor = "bg-rose-100 text-rose-800";
+
+                const imgThumb = job.image 
+                    ? `<img src="${job.image}" class="w-9 h-9 rounded-lg object-cover border border-slate-200" onerror="this.src='https://placehold.co/100x100?text=No+Img'">`
+                    : `<div class="w-9 h-9 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400"><i data-lucide="image" class="w-4 h-4"></i></div>`;
+
+                const actionCol = isAdmin ? `
+                    <td class="p-4 text-right space-x-2 whitespace-nowrap admin-only">
+                        <button onclick="editJob(${job.id})" class="text-blue-600 hover:text-blue-800"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                        <button onclick="deleteJob(${job.id})" class="text-rose-600 hover:text-rose-800"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                ` : '';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4">${imgThumb}</td>
+                        <td class="p-4 whitespace-nowrap"><span class="px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 border border-slate-200 text-slate-700">${job.category || 'General'}</span></td>
+                        <td class="p-4 font-semibold text-slate-800">
+                            ${job.name}
+                            <div class="text-xs text-slate-400 font-normal truncate max-w-xs">${job.desc || ''}</div>
+                        </td>
+                        <td class="p-4 text-slate-600 text-xs">${job.pic || '-'}</td>
+                        <td class="p-4 whitespace-nowrap text-slate-500 font-mono text-xs">${job.targetDate || '-'}</td>
+                        <td class="p-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-20 bg-slate-200 h-2 rounded-full overflow-hidden">
+                                    <div class="bg-amber-500 h-full" style="width: ${job.progress}%"></div>
+                                </div>
+                                <span class="font-bold text-xs">${job.progress}%</span>
+                            </div>
+                        </td>
+                        <td class="p-4 whitespace-nowrap">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeColor}">${job.status}</span>
+                        </td>
+                        <td class="p-4 text-slate-500 text-xs max-w-xs truncate">${job.issues || '-'}</td>
+                        ${actionCol}
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function saveJob(e) {
+            e.preventDefault();
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Anda harus Login Admin untuk menyimpan data.");
+                return;
+            }
+
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            const id = document.getElementById('job-id').value;
+            const jobData = {
+                id: id ? Number(id) : Date.now(),
+                category: document.getElementById('job-category').value,
+                pic: document.getElementById('job-pic').value || 'Unassigned',
+                date: document.getElementById('job-date').value,
+                targetDate: document.getElementById('job-target-date').value,
+                name: document.getElementById('job-name').value,
+                desc: document.getElementById('job-desc').value,
+                image: document.getElementById('job-image').value,
+                progress: Number(document.getElementById('job-progress').value),
+                status: document.getElementById('job-status').value,
+                issues: document.getElementById('job-issues').value || '-'
+            };
+
+            if(id) {
+                const idx = activeProj.jobs.findIndex(j => j.id === Number(id));
+                if(idx !== -1) activeProj.jobs[idx] = jobData;
+            } else {
+                activeProj.jobs.push(jobData);
+            }
+
+            toggleModal('modal-job', false);
+            saveState();
+            showToast("Data pekerjaan berhasil disimpan!");
+        }
+
+        function deleteJob(id) {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Hanya Admin yang dapat menghapus data.");
+                return;
+            }
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            if(confirm("Apakah Anda yakin ingin menghapus pekerjaan ini?")) {
+                activeProj.jobs = activeProj.jobs.filter(j => j.id !== id);
+                saveState();
+                showToast("Pekerjaan berhasil dihapus.");
+            }
+        }
+
+        // ================= 4. PEKERJA & ABSENSI =================
+        function renderWorkers() {
+            const activeProj = getActiveProject();
+            const tbody = document.getElementById('workers-table-body');
+            if(!tbody || !activeProj) return;
+
+            tbody.innerHTML = '';
+            document.getElementById('worker-count-tag').innerText = `${activeProj.workers.length} Terdaftar`;
+            const isAdmin = isAdminLoggedIn();
+
+            activeProj.workers.forEach(worker => {
+                const actionCol = isAdmin ? `
+                    <td class="p-3 text-right admin-only">
+                        <button onclick="deleteWorker(${worker.id})" class="text-rose-600 hover:text-rose-800"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                    </td>
+                ` : '';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-3 font-semibold text-slate-800">${worker.name}</td>
+                        <td class="p-3"><span class="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded-md border border-slate-200">${worker.role}</span></td>
+                        <td class="p-3 font-mono">${formatRp(worker.rate)}</td>
+                        ${actionCol}
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function saveWorker(e) {
+            e.preventDefault();
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Anda harus Login Admin untuk menambah pekerja.");
+                return;
+            }
+
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            const newWorker = {
+                id: Date.now(),
+                name: document.getElementById('worker-name').value,
+                role: document.getElementById('worker-role').value,
+                rate: Number(document.getElementById('worker-rate').value)
+            };
+
+            activeProj.workers.push(newWorker);
+            document.getElementById('form-worker').reset();
+            toggleModal('modal-worker', false);
+            saveState();
+            showToast("Tenaga kerja baru ditambahkan.");
+        }
+
+        function deleteWorker(id) {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Hanya Admin yang dapat menghapus pekerja.");
+                return;
+            }
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            if(confirm("Hapus data pekerja ini? Data absensi terkait akan tetap tersimpan di riwayat.")) {
+                activeProj.workers = activeProj.workers.filter(w => w.id !== id);
+                saveState();
+                showToast("Pekerja dihapus.");
+            }
+        }
+
+        function saveAttendance(e) {
+            e.preventDefault();
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Anda harus Login Admin untuk mencatat absensi.");
+                return;
+            }
+
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            const workerId = Number(document.getElementById('att-worker-id').value);
+            if(!workerId) {
+                alert("Pilih pekerja terlebih dahulu!");
+                return;
+            }
+
+            const worker = activeProj.workers.find(w => w.id === workerId);
+            const status = document.getElementById('att-status').value;
+
+            const overtimeRate = appData.settings?.overtimeRate || 1.5;
+            const halfDayRate = appData.settings?.halfDayRate || 0.5;
+
+            let multiplier = 1;
+            if (status === 'Hadir Setengah Hari') multiplier = halfDayRate;
+            if (status === 'Lembur') multiplier = overtimeRate;
+            if (status === 'Sakit/Izin' || status === 'Alpa') multiplier = 0;
+
+            const calculatedPay = worker ? worker.rate * multiplier : 0;
+
+            const newAtt = {
+                id: Date.now(),
+                date: document.getElementById('att-date').value,
+                workerId: workerId,
+                status: status,
+                pay: calculatedPay
+            };
+
+            activeProj.attendance.unshift(newAtt);
+            
+            if(calculatedPay > 0) {
+                activeProj.finance.unshift({
+                    id: Date.now() + 1,
+                    type: 'Pengeluaran',
+                    date: newAtt.date,
+                    category: 'Upah Pekerja',
+                    desc: `Upah (${worker ? worker.name : 'Pekerja'} - ${status})`,
+                    ref: `ABSEN-${newAtt.id.toString().slice(-4)}`,
+                    amount: calculatedPay
+                });
+            }
+
+            toggleModal('modal-attendance', false);
+            saveState();
+            showToast("Absensi berhasil dicatat!");
+        }
+
+        // ================= 5. KEUANGAN =================
+        function renderFinance() {
+            const activeProj = getActiveProject();
+            const tbody = document.getElementById('finance-table-body');
+            if(!tbody || !activeProj) return;
+
+            tbody.innerHTML = '';
+            const isAdmin = isAdminLoggedIn();
+
+            const totalIncome = activeProj.finance
+                .filter(f => f.type === 'Pemasukan')
+                .reduce((acc, f) => acc + Number(f.amount || 0), 0);
+
+            const totalSpent = activeProj.finance
+                .filter(f => f.type === 'Pengeluaran' || !f.type)
+                .reduce((acc, f) => acc + Number(f.amount || 0), 0);
+
+            const remaining = activeProj.budget - totalSpent;
+
+            document.getElementById('fin-total-budget').innerText = formatRp(activeProj.budget);
+            document.getElementById('fin-total-income').innerText = formatRp(totalIncome);
+            document.getElementById('fin-total-spent').innerText = formatRp(totalSpent);
+            document.getElementById('fin-total-remaining').innerText = formatRp(remaining);
+
+            if(activeProj.finance.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${isAdmin ? '7' : '6'}" class="p-4 text-center text-slate-400">Belum ada catatan transaksi keuangan.</td></tr>`;
+                return;
+            }
+
+            activeProj.finance.forEach(item => {
+                const isIncome = item.type === 'Pemasukan';
+                const typeBadge = isIncome 
+                    ? `<span class="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-xs rounded font-medium">Pemasukan</span>`
+                    : `<span class="px-2 py-0.5 bg-rose-100 text-rose-800 text-xs rounded font-medium">Pengeluaran</span>`;
+
+                const actionCol = isAdmin ? `
+                    <td class="p-4 text-right admin-only">
+                        <button onclick="deleteFinance(${item.id})" class="text-rose-600 hover:text-rose-800"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </td>
+                ` : '';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 whitespace-nowrap text-slate-500 font-mono text-xs">${item.date}</td>
+                        <td class="p-4 whitespace-nowrap">${typeBadge}</td>
+                        <td class="p-4"><span class="px-2 py-1 bg-slate-100 text-slate-700 text-xs rounded-md font-semibold">${item.category}</span></td>
+                        <td class="p-4 font-medium text-slate-800">${item.desc}</td>
+                        <td class="p-4 text-slate-500 text-xs font-mono">${item.ref || '-'}</td>
+                        <td class="p-4 font-bold font-mono ${isIncome ? 'text-emerald-600' : 'text-slate-800'}">${formatRp(item.amount)}</td>
+                        ${actionCol}
+                    </tr>
+                `;
+            });
+            lucide.createIcons();
+        }
+
+        function saveFinance(e) {
+            e.preventDefault();
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Login Admin untuk mencatat transaksi keuangan.");
+                return;
+            }
+
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            const newFin = {
+                id: Date.now(),
+                type: document.getElementById('fin-type').value,
+                date: document.getElementById('fin-date').value,
+                category: document.getElementById('fin-category').value,
+                desc: document.getElementById('fin-desc').value,
+                amount: Number(document.getElementById('fin-amount').value),
+                ref: document.getElementById('fin-ref').value || '-'
+            };
+
+            activeProj.finance.unshift(newFin);
+            document.getElementById('form-finance').reset();
+            toggleModal('modal-finance', false);
+            saveState();
+            showToast("Transaksi keuangan dicatat.");
+        }
+
+        function deleteFinance(id) {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Hanya Admin yang dapat menghapus transaksi.");
+                return;
+            }
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            if(confirm("Hapus catatan transaksi keuangan ini?")) {
+                activeProj.finance = activeProj.finance.filter(f => f.id !== id);
+                saveState();
+                showToast("Transaksi dihapus.");
+            }
+        }
+
+        function editBudget() {
+            if (!isAdminLoggedIn()) {
+                alert("Akses Ditolak! Login Admin untuk mengubah anggaran.");
+                return;
+            }
+            const activeProj = getActiveProject();
+            if(!activeProj) return;
+
+            const newBudget = prompt("Masukkan Target Anggaran (Budget) Proyek (Rp):", activeProj.budget);
+            if(newBudget !== null && !isNaN(newBudget) && Number(newBudget) >= 0) {
+                activeProj.budget = Number(newBudget);
+                saveState();
+                showToast("Target anggaran diperbarui!");
+            }
+        }
+    </script>
+</body>
+</html>
